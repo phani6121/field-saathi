@@ -105,50 +105,22 @@ const Dashboard = () => {
     navigate('/signin');
   };
 
-  // Filter campaigns based on user type
-  const visibleCampaigns = campaigns.filter(campaign => {
-    if (userType === 'vendor') {
-      return campaign.assignedTo === userEmail || campaign.createdBy === userEmail;
-    } else if (userType === 'client') {
-      return campaign.createdBy === userEmail;
-    }
-    return true;
-  });
-
-  // Calculate total photos from visible campaigns
-  const totalPhotos = visibleCampaigns.reduce((sum, campaign) => {
+  // Calculate total photos from all campaigns
+  const totalPhotos = campaigns.reduce((sum, campaign) => {
     if (campaign.activities && campaign.activities.length > 0) {
       return sum + campaign.activities.filter(act => act.photoUrl).length;
     }
     return sum;
   }, 0);
 
-  // Calculate total activities from visible campaigns
-  const totalActivities = visibleCampaigns.reduce((sum, campaign) => {
-    if (campaign.activities && campaign.activities.length > 0) {
-      return sum + campaign.activities.length;
-    }
-    return sum;
-  }, 0);
-
-  // Calculate today's activities from visible campaigns
-  const today = new Date().toDateString();
-  const todayActivities = visibleCampaigns.reduce((sum, campaign) => {
-    if (campaign.activities && campaign.activities.length > 0) {
-      const todayCount = campaign.activities.filter(act => {
-        const activityDate = act.date ? new Date(act.date).toDateString() : null;
-        return activityDate === today;
-      }).length;
-      return sum + todayCount;
-    }
-    return sum;
-  }, 0);
-
   const stats = {
-    activeCampaigns: visibleCampaigns.filter(c => c.status === 'Active' || (!c.submitted && c.status !== 'Completed')).length,
-    totalActivities: totalActivities,
+    activeCampaigns: campaigns.length,
+    totalActivities: activities.length,
     photosUploaded: totalPhotos,
-    todayActivities: todayActivities
+    todayActivities: activities.filter(act => {
+      const today = new Date().toDateString();
+      return new Date(act.date).toDateString() === today;
+    }).length
   };
 
   const handleCreateCampaign = (campaignData) => {
