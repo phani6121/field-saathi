@@ -737,6 +737,12 @@
   min-height: 400px;
 }
 
+@media (max-width: 768px) {
+  .gallery-content {
+    padding: 1rem;
+  }
+}
+
 .campaigns-gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

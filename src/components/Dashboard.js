@@ -40,10 +40,14 @@ const Dashboard = () => {
     
     if (savedCampaigns) {
       try {
-        setCampaigns(JSON.parse(savedCampaigns));
+        const parsedCampaigns = JSON.parse(savedCampaigns);
+        setCampaigns(parsedCampaigns);
+        console.log('Campaigns loaded:', parsedCampaigns.length, parsedCampaigns);
       } catch (e) {
         console.error('Error loading campaigns:', e);
       }
+    } else {
+      console.log('No campaigns found in localStorage');
     }
     
   }, []);
@@ -80,6 +84,8 @@ const Dashboard = () => {
     
     // Save campaigns to localStorage immediately
     localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+    console.log('Campaign created and saved:', newCampaign);
+    console.log('Total campaigns:', updatedCampaigns.length);
   };
 
   // Check if location services are available
@@ -879,10 +885,24 @@ const Dashboard = () => {
                   <p>{userType === 'vendor' 
                     ? 'Create a campaign to start uploading photos' 
                     : 'No campaigns available yet. Campaigns from vendors will appear here.'}</p>
+                  {userType === 'vendor' && (
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => {
+                        setActivePage('campaigns');
+                        setShowCreateCampaign(true);
+                      }}
+                      style={{ marginTop: '1rem' }}
+                    >
+                      Create Your First Campaign
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="campaigns-gallery-grid">
-                  {campaigns.map(campaign => (
+                  {campaigns.map(campaign => {
+                    console.log('Rendering campaign:', campaign);
+                    return (
                     <div key={campaign.id} className="campaign-gallery-card">
                       <div className="campaign-gallery-header">
                         <h3>{campaign.name}</h3>
@@ -912,7 +932,8 @@ const Dashboard = () => {
                         📸 Take Photo
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
