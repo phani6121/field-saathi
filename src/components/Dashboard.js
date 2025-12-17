@@ -7,7 +7,12 @@ import CreateCampaign from './CreateCampaign';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Auto-detect mobile and close sidebar by default on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Check if mobile device
+    const isMobile = window.innerWidth <= 768;
+    return !isMobile; // Open on desktop, closed on mobile
+  });
   const [activePage, setActivePage] = useState('dashboard');
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
@@ -1080,7 +1085,15 @@ const Dashboard = () => {
             <p className="nav-label">Navigation</p>
             <button 
               className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActivePage('dashboard')}
+              onClick={() => {
+                setActivePage('dashboard');
+                // Close sidebar on mobile after navigation
+                if (window.innerWidth <= 768) {
+                  setSidebarOpen(false);
+                  const overlay = document.querySelector('.sidebar-overlay');
+                  if (overlay) document.body.removeChild(overlay);
+                }
+              }}
             >
               <span className="nav-icon">📊</span>
               <span className="nav-text">Dashboard</span>
@@ -1124,7 +1137,31 @@ const Dashboard = () => {
           <div className="topbar-left">
             <button 
               className="toggle-sidebar-btn"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onClick={() => {
+                setSidebarOpen(!sidebarOpen);
+                // On mobile, add overlay when sidebar opens
+                if (window.innerWidth <= 768) {
+                  const overlay = document.createElement('div');
+                  overlay.className = 'sidebar-overlay';
+                  overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 999;
+                    display: ${sidebarOpen ? 'none' : 'block'};
+                  `;
+                  overlay.onclick = () => {
+                    setSidebarOpen(false);
+                    document.body.removeChild(overlay);
+                  };
+                  if (!sidebarOpen && !document.querySelector('.sidebar-overlay')) {
+                    document.body.appendChild(overlay);
+                  }
+                }
+              }}
             >
               ☰
             </button>
