@@ -45,11 +45,13 @@
 body {
     font-family: 'Poppins', sans-serif;
     line-height: 1.6;
-    color: #333;
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
     overflow-x: hidden;
     margin: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .container {
@@ -60,12 +62,13 @@ body {
 
 /* Navbar */
 .navbar {
-    background: var(--white);
+    background: var(--bg-primary);
     box-shadow: var(--shadow);
     position: sticky;
     top: 0;
     z-index: 1000;
     padding: 1rem 0;
+    transition: background-color 0.3s, box-shadow 0.3s;
 }
 
 .navbar .container {
@@ -117,7 +120,7 @@ body {
 
 .nav-menu a {
     text-decoration: none;
-    color: var(--text-light);
+    color: var(--text-secondary);
     font-weight: 500;
     transition: color 0.3s;
 }
@@ -142,12 +145,13 @@ body {
 
 /* Hero Section */
 .hero {
-    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    background: var(--bg-secondary);
     padding: 100px 0;
     min-height: 500px;
     display: flex;
     align-items: center;
     text-align: center;
+    transition: background-color 0.3s;
 }
 
 .hero .container {
@@ -157,9 +161,10 @@ body {
 .hero-title {
     font-size: 3.5rem;
     font-weight: 700;
-    color: var(--text-dark);
+    color: var(--text-primary);
     margin-bottom: 1.5rem;
     line-height: 1.2;
+    transition: color 0.3s;
 }
 
 .hero-subtitle-highlight {
@@ -169,9 +174,10 @@ body {
 
 .hero-description {
     font-size: 1.3rem;
-    color: var(--text-light);
+    color: var(--text-secondary);
     margin-bottom: 2.5rem;
     line-height: 1.8;
+    transition: color 0.3s;
 }
 
 .hero-buttons {
@@ -216,21 +222,24 @@ body {
 /* Features Section */
 .features {
     padding: 80px 0;
-    background: var(--white);
+    background: var(--bg-primary);
+    transition: background-color 0.3s;
 }
 
 .section-title {
     text-align: center;
     font-size: 2.5rem;
     font-weight: 600;
-    color: var(--text-dark);
+    color: var(--text-primary);
     margin-bottom: 1rem;
+    transition: color 0.3s;
 }
 
 .section-subtitle {
     text-align: center;
     font-size: 1.1rem;
-    color: var(--text-light);
+    color: var(--text-secondary);
+    transition: color 0.3s;
     margin-bottom: 3rem;
     max-width: 700px;
     margin-left: auto;
@@ -244,12 +253,13 @@ body {
 }
 
 .feature-card {
-    background: var(--white);
+    background: var(--bg-primary);
     padding: 2rem;
     border-radius: 10px;
     box-shadow: var(--shadow);
     text-align: center;
-    transition: all 0.3s;
+    transition: all 0.3s, background-color 0.3s;
+    border: 1px solid var(--border-color);
 }
 
 .feature-card:hover {
@@ -325,7 +335,7 @@ body {
 }
 
 .demo-preview {
-    background: var(--white);
+    background: var(--bg-primary);
     padding: 3rem;
     border-radius: 10px;
     box-shadow: var(--shadow);
@@ -333,6 +343,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid var(--border-color);
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
 .demo-text {
@@ -386,7 +398,8 @@ body {
 /* Pricing Section */
 .pricing {
     padding: 80px 0;
-    background: var(--white);
+    background: var(--bg-secondary);
+    transition: background-color 0.3s;
 }
 
 .pricing-grid {
@@ -398,9 +411,11 @@ body {
 }
 
 .pricing-card {
-    background: var(--white);
+    background: var(--bg-primary);
     padding: 2.5rem;
     border-radius: 10px;
+    border: 1px solid var(--border-color);
+    transition: background-color 0.3s, border-color 0.3s;
     box-shadow: var(--shadow);
     text-align: center;
     transition: all 0.3s;
@@ -487,12 +502,13 @@ body {
 }
 
 .perfect-for-item {
-    background: var(--white);
+    background: var(--bg-primary);
     padding: 2rem;
     border-radius: 10px;
     box-shadow: var(--shadow);
     text-align: center;
-    transition: all 0.3s;
+    transition: all 0.3s, background-color 0.3s;
+    border: 1px solid var(--border-color);
 }
 
 .perfect-for-item:hover {
@@ -531,9 +547,10 @@ body {
 
 /* Footer */
 .footer {
-    background: var(--text-dark);
-    color: var(--white);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     padding: 3rem 0 2rem;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .footer-content {

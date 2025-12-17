@@ -1,19 +1,22 @@
 .signup-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  background: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
+  transition: background-color 0.3s;
 }
 
 .signup-container {
-  background: var(--white);
+  background: var(--bg-primary);
   border-radius: 10px;
   box-shadow: var(--shadow-hover);
   max-width: 500px;
   width: 100%;
   padding: 3rem 2.5rem;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .signup-header {
@@ -66,12 +69,13 @@
 .signup-form select {
   width: 100%;
   padding: 12px 15px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border-color);
   border-radius: 5px;
   font-size: 1rem;
   font-family: 'Poppins', sans-serif;
-  transition: border-color 0.3s;
-  background: var(--white);
+  transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .signup-form input:focus,
@@ -108,7 +112,8 @@
   text-align: center;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-color);
+  transition: border-color 0.3s;
 }
 
 .signup-footer p {

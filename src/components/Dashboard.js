@@ -1,22 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import {
+  Box,
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  Button,
+  Card,
+  CardContent,
+  Grid,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Chip,
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Paper,
+  Stack,
+  Tabs,
+  Tab,
+  Container,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+} from '@mui/material';
+import {
+  Dashboard as DashboardIcon,
+  Campaign as CampaignIcon,
+  PhotoCamera as PhotoIcon,
+  Assessment as ReportsIcon,
+  Analytics as AnalyticsIcon,
+  Logout as LogoutIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+} from '@mui/icons-material';
 import './Dashboard.css';
 import CreateCampaign from './CreateCampaign';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  // Auto-detect mobile and close sidebar by default on mobile
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    // Check if mobile device
-    const isMobile = window.innerWidth <= 768;
-    return !isMobile; // Open on desktop, closed on mobile
-  });
   const [activePage, setActivePage] = useState('dashboard');
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [galleryFilters, setGalleryFilters] = useState({
     search: '',
     campaign: 'All Campaigns',
@@ -66,141 +105,143 @@ const Dashboard = () => {
     navigate('/signin');
   };
 
+  // Filter campaigns based on user type
+  const visibleCampaigns = campaigns.filter(campaign => {
+    if (userType === 'vendor') {
+      return campaign.assignedTo === userEmail || campaign.createdBy === userEmail;
+    } else if (userType === 'client') {
+      return campaign.createdBy === userEmail;
+    }
+    return true;
+  });
+
+  // Calculate total photos from visible campaigns
+  const totalPhotos = visibleCampaigns.reduce((sum, campaign) => {
+    if (campaign.activities && campaign.activities.length > 0) {
+      return sum + campaign.activities.filter(act => act.photoUrl).length;
+    }
+    return sum;
+  }, 0);
+
+  // Calculate total activities from visible campaigns
+  const totalActivities = visibleCampaigns.reduce((sum, campaign) => {
+    if (campaign.activities && campaign.activities.length > 0) {
+      return sum + campaign.activities.length;
+    }
+    return sum;
+  }, 0);
+
+  // Calculate today's activities from visible campaigns
+  const today = new Date().toDateString();
+  const todayActivities = visibleCampaigns.reduce((sum, campaign) => {
+    if (campaign.activities && campaign.activities.length > 0) {
+      const todayCount = campaign.activities.filter(act => {
+        const activityDate = act.date ? new Date(act.date).toDateString() : null;
+        return activityDate === today;
+      }).length;
+      return sum + todayCount;
+    }
+    return sum;
+  }, 0);
+
   const stats = {
-    activeCampaigns: campaigns.length,
-    totalActivities: activities.length,
-    photosUploaded: activities.reduce((sum, act) => sum + (act.photos || 0), 0),
-    todayActivities: activities.filter(act => {
-      const today = new Date().toDateString();
-      return new Date(act.date).toDateString() === today;
-    }).length
+    activeCampaigns: visibleCampaigns.filter(c => c.status === 'Active' || (!c.submitted && c.status !== 'Completed')).length,
+    totalActivities: totalActivities,
+    photosUploaded: totalPhotos,
+    todayActivities: todayActivities
   };
 
   const handleCreateCampaign = (campaignData) => {
-    const newCampaign = { ...campaignData, id: Date.now(), createdAt: new Date().toISOString() };
-    const updatedCampaigns = [...campaigns, newCampaign];
-    setCampaigns(updatedCampaigns);
-    setShowCreateCampaign(false);
-    
-    // Save campaigns to localStorage immediately
-    localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
-    console.log('Campaign created and saved:', newCampaign);
-    console.log('Total campaigns:', updatedCampaigns.length);
-  };
-
-  // Check if location services are available
-  const checkLocationAvailable = () => {
-    if (!navigator.geolocation) {
-      return { available: false, message: 'Geolocation is not supported by this browser' };
-    }
-    return { available: true };
-  };
-
-  // Get current GPS location with high accuracy
-  const getCurrentLocation = () => {
-    return new Promise((resolve, reject) => {
-      const locationCheck = checkLocationAvailable();
-      if (!locationCheck.available) {
-        const error = new Error(locationCheck.message);
-        console.error('GPS Error:', error.message);
-        reject(error);
-        return;
-      }
-
-      // First try: High accuracy with longer timeout
-      const highAccuracyOptions = {
-        enableHighAccuracy: true,
-        timeout: 25000,            // 25 second timeout
-        maximumAge: 0              // Don't use cached location
+    if (editingCampaign) {
+      // Update existing campaign
+      const updatedCampaigns = campaigns.map(c => {
+        if (c.id === editingCampaign.id) {
+          return {
+            ...c,
+            ...campaignData,
+            // Preserve activities and submission status
+            activities: c.activities || [],
+            submitted: c.submitted || false,
+            submittedAt: c.submittedAt || null
+          };
+        }
+        return c;
+      });
+      setCampaigns(updatedCampaigns);
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      setEditingCampaign(null);
+      setShowCreateCampaign(false);
+      alert('Campaign updated successfully!');
+    } else {
+      // Create new campaign
+      const newCampaign = { 
+        ...campaignData, 
+        id: Date.now(), 
+        createdAt: new Date().toISOString(),
+        submitted: false,
+        submittedAt: null,
+        activities: [],
+        createdBy: userType === 'client' ? userEmail : null,
+        assignedTo: campaignData.assignedTo || (userType === 'vendor' ? userEmail : null)
       };
+      const updatedCampaigns = [...campaigns, newCampaign];
+      setCampaigns(updatedCampaigns);
+      setShowCreateCampaign(false);
+      
+      // Save campaigns to localStorage immediately
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      console.log('Campaign created and saved:', newCampaign);
+      console.log('Total campaigns:', updatedCampaigns.length);
+    }
+  };
 
-      console.log('Attempting to get GPS location with high accuracy...');
+  const handleEditCampaign = (campaign) => {
+    console.log('handleEditCampaign called with:', campaign);
+    setEditingCampaign(campaign);
+    setShowCreateCampaign(true);
+  };
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const gpsData = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy, // in meters
-            timestamp: new Date().toISOString()
-          };
-          console.log('GPS captured successfully:', {
-            latitude: gpsData.latitude,
-            longitude: gpsData.longitude,
-            accuracy: `${Math.round(gpsData.accuracy)}m`
-          });
-          resolve(gpsData);
-        },
-        (error) => {
-          console.warn('High accuracy GPS failed:', {
-            code: error.code,
-            message: error.message
-          });
+  const handleDeleteCampaign = (campaignId) => {
+    console.log('handleDeleteCampaign called with campaignId:', campaignId);
+    if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+      const updatedCampaigns = campaigns.filter(c => c.id !== campaignId);
+      setCampaigns(updatedCampaigns);
+      localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+      alert('Campaign deleted successfully!');
+    }
+  };
 
-          // If high accuracy fails, try with cached/less accurate location
-          const fallbackOptions = {
-            enableHighAccuracy: false,  // Allow less accurate sources
-            timeout: 15000,             // 15 second timeout
-            maximumAge: 60000           // Accept location up to 1 minute old
-          };
-
-          console.log('Trying fallback GPS with cached location...');
-
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const gpsData = {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy,
-                timestamp: new Date().toISOString()
-              };
-              console.log('GPS captured with fallback method:', {
-                latitude: gpsData.latitude,
-                longitude: gpsData.longitude,
-                accuracy: `${Math.round(gpsData.accuracy)}m`
-              });
-              resolve(gpsData);
-            },
-            (fallbackError) => {
-              console.error('GPS capture failed completely:', {
-                code: fallbackError.code,
-                message: fallbackError.message,
-                originalError: {
-                  code: error.code,
-                  message: error.message
-                }
-              });
-              reject(fallbackError);
-            },
-            fallbackOptions
-          );
-        },
-        highAccuracyOptions
-      );
-    });
+  // Generate random location for testing/demo purposes
+  const getRandomLocation = () => {
+    // Random locations in India (for demo)
+    const locations = [
+      { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+      { name: 'Delhi', lat: 28.6139, lng: 77.2090 },
+      { name: 'Bangalore', lat: 12.9716, lng: 77.5946 },
+      { name: 'Hyderabad', lat: 17.3850, lng: 78.4867 },
+      { name: 'Chennai', lat: 13.0827, lng: 80.2707 },
+      { name: 'Kolkata', lat: 22.5726, lng: 88.3639 },
+      { name: 'Pune', lat: 18.5204, lng: 73.8567 },
+      { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714 }
+    ];
+    
+    const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+    
+    // Add small random offset to make it more realistic (±0.01 degrees ≈ 1km)
+    const latOffset = (Math.random() - 0.5) * 0.02;
+    const lngOffset = (Math.random() - 0.5) * 0.02;
+    
+    return {
+      latitude: randomLocation.lat + latOffset,
+      longitude: randomLocation.lng + lngOffset,
+      accuracy: Math.floor(Math.random() * 50) + 5, // Random accuracy 5-55 meters
+      locationName: randomLocation.name,
+      timestamp: new Date().toISOString()
+    };
   };
 
   const handleTakePhoto = (campaign) => {
-    // First check if location is available
-    const locationCheck = checkLocationAvailable();
-    if (!locationCheck.available) {
-      alert('⚠️ Location services are not available. Please enable location services in your device settings and browser permissions.');
-      return;
-    }
-
-    // Request location permission early when camera opens
-    console.log('Requesting location permission...');
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        console.log('Location permission granted');
-      },
-      (error) => {
-        if (error.code === 1) {
-          alert('⚠️ Location permission is required!\n\nPlease enable location access in your browser settings to capture GPS coordinates with photos.\n\n1. Click the lock/location icon in your browser address bar\n2. Allow location access\n3. Try taking photo again');
-        }
-      },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
+    // No location permission needed - using random locations for demo
 
     // Check if getUserMedia is available (for camera access)
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -253,7 +294,7 @@ const Dashboard = () => {
             cursor: pointer;
           `;
 
-          // Add location status indicator
+          // Location status indicator (using random locations)
           const locationStatus = document.createElement('div');
           locationStatus.style.cssText = `
             color: #4caf50;
@@ -265,25 +306,7 @@ const Dashboard = () => {
             justify-content: center;
             gap: 0.5rem;
           `;
-          locationStatus.innerHTML = '📍 Checking location...';
-          
-          // Check location status when camera opens
-          navigator.geolocation.getCurrentPosition(
-            () => {
-              locationStatus.innerHTML = '✅ Location enabled';
-              locationStatus.style.color = '#4caf50';
-            },
-            (error) => {
-              if (error.code === 1) {
-                locationStatus.innerHTML = '⚠️ Location permission denied - Enable in browser settings';
-                locationStatus.style.color = '#ff9800';
-              } else {
-                locationStatus.innerHTML = '⚠️ Location unavailable - Enable location services';
-                locationStatus.style.color = '#ff9800';
-              }
-            },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-          );
+          locationStatus.innerHTML = '📍 Random location will be assigned';
           
           const cancelBtn = document.createElement('button');
           cancelBtn.textContent = 'Cancel';
@@ -304,54 +327,10 @@ const Dashboard = () => {
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
             
-            // Show loading indicator
-            captureBtn.disabled = true;
-            captureBtn.textContent = '📍 Getting location...';
-            
-            // Get GPS location with high accuracy
-            let gpsData = null;
-            let locationName = campaign.targetLocations ? campaign.targetLocations.split(',')[0].trim() : 'Unknown';
-            
-            try {
-              gpsData = await getCurrentLocation();
-              // Use GPS coordinates, keep campaign location as fallback name
-              locationName = `${gpsData.latitude.toFixed(6)}, ${gpsData.longitude.toFixed(6)}`;
-              console.log('GPS data captured successfully:', gpsData);
-            } catch (error) {
-              console.error('GPS capture failed after all attempts:', {
-                code: error.code,
-                message: error.message,
-                error: error
-              });
-              
-              // Show specific error messages and instructions
-              if (error.code === 1) {
-                console.warn('Location permission denied by user');
-                alert('⚠️ Location Permission Required!\n\nPlease enable location access:\n\n1. Click the lock/location icon in your browser address bar\n2. Select "Allow" for location\n3. Make sure device location services are ON\n4. Try capturing photo again\n\nPhoto cannot be saved without location.');
-                // Stop photo capture if location is required
-                captureBtn.disabled = false;
-                captureBtn.textContent = '📸 Capture Photo';
-                return;
-              } else if (error.code === 2) {
-                console.warn('Location unavailable - device cannot determine location');
-                alert('⚠️ Location Unavailable!\n\nPlease enable location services on your device:\n\n1. Go to device Settings\n2. Enable Location/GPS\n3. Make sure you are outdoors or have clear sky view\n4. Try again\n\nPhoto cannot be saved without location.');
-                captureBtn.disabled = false;
-                captureBtn.textContent = '📸 Capture Photo';
-                return;
-              } else if (error.code === 3) {
-                console.warn('Location request timed out - GPS taking too long');
-                alert('⚠️ Location Timeout!\n\nGPS is taking too long. Please:\n\n1. Make sure location services are enabled\n2. Go to an area with better GPS signal (outdoors)\n3. Wait a few seconds and try again\n\nPhoto cannot be saved without location.');
-                captureBtn.disabled = false;
-                captureBtn.textContent = '📸 Capture Photo';
-                return;
-              } else {
-                console.warn('Unknown GPS error:', error);
-                alert('⚠️ Could not get location!\n\nPlease enable location services and try again.\n\nPhoto cannot be saved without location.');
-                captureBtn.disabled = false;
-                captureBtn.textContent = '📸 Capture Photo';
-                return;
-              }
-            }
+            // Generate random location (no GPS needed)
+            const locationData = getRandomLocation();
+            const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
+            console.log('Random location generated:', locationData);
             
             canvas.toBlob((blob) => {
               const reader = new FileReader();
@@ -363,10 +342,10 @@ const Dashboard = () => {
                   url: event.target.result,
                   date: new Date().toISOString().split('T')[0],
                   location: locationName,
-                  latitude: gpsData ? gpsData.latitude : null,
-                  longitude: gpsData ? gpsData.longitude : null,
-                  accuracy: gpsData ? gpsData.accuracy : null,
-                  gpsTimestamp: gpsData ? gpsData.timestamp : null,
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  accuracy: locationData.accuracy,
+                  gpsTimestamp: locationData.timestamp,
                   agent: userType === 'vendor' ? 'You' : 'Field Agent',
                   status: 'Pending'
                 };
@@ -376,12 +355,27 @@ const Dashboard = () => {
                   title: `Photo for ${campaign.name}`,
                   date: new Date().toISOString().split('T')[0],
                   location: photoData.location,
-                  latitude: photoData.latitude,
-                  longitude: photoData.longitude,
-                  accuracy: photoData.accuracy,
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  accuracy: locationData.accuracy,
                   photos: 1,
-                  campaignId: campaign.id
+                  campaignId: campaign.id,
+                  photoUrl: photoData.url,
+                  submittedBy: userEmail
                 };
+                
+                // Add activity to campaign
+                const updatedCampaigns = campaigns.map(c => {
+                  if (c.id === campaign.id) {
+                    return {
+                      ...c,
+                      activities: [...(c.activities || []), newActivity]
+                    };
+                  }
+                  return c;
+                });
+                setCampaigns(updatedCampaigns);
+                localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
                 
                 setActivities(prev => [...prev, newActivity]);
                 
@@ -389,11 +383,7 @@ const Dashboard = () => {
                 stream.getTracks().forEach(track => track.stop());
                 document.body.removeChild(modal);
                 
-                if (gpsData) {
-                  alert(`Photo captured successfully!\nLocation: ${gpsData.latitude.toFixed(6)}, ${gpsData.longitude.toFixed(6)}\nAccuracy: ±${Math.round(gpsData.accuracy)}m`);
-                } else {
-                  alert('Photo captured successfully!');
-                }
+                alert(`Photo captured successfully!\nLocation: ${locationData.locationName}\nCoordinates: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}\nAccuracy: ±${locationData.accuracy}m`);
               };
               reader.readAsDataURL(blob);
             }, 'image/jpeg', 0.9);
@@ -422,22 +412,10 @@ const Dashboard = () => {
           input.onchange = async (e) => {
             const file = e.target.files[0];
             if (file) {
-              // Get GPS location
-              let gpsData = null;
-              let locationName = campaign.targetLocations ? campaign.targetLocations.split(',')[0].trim() : 'Unknown';
-              
-              try {
-                gpsData = await getCurrentLocation();
-                locationName = `${gpsData.latitude.toFixed(6)}, ${gpsData.longitude.toFixed(6)}`;
-                console.log('GPS data captured:', gpsData);
-              } catch (error) {
-                console.error('GPS capture failed:', {
-                  code: error.code,
-                  message: error.message,
-                  error: error
-                });
-                // Continue without GPS
-              }
+              // Generate random location
+              const locationData = getRandomLocation();
+              const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
+              console.log('Random location generated:', locationData);
               
               const reader = new FileReader();
               reader.onload = (event) => {
@@ -448,10 +426,10 @@ const Dashboard = () => {
                   url: event.target.result,
                   date: new Date().toISOString().split('T')[0],
                   location: locationName,
-                  latitude: gpsData ? gpsData.latitude : null,
-                  longitude: gpsData ? gpsData.longitude : null,
-                  accuracy: gpsData ? gpsData.accuracy : null,
-                  gpsTimestamp: gpsData ? gpsData.timestamp : null,
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  accuracy: locationData.accuracy,
+                  gpsTimestamp: locationData.timestamp,
                   agent: userType === 'vendor' ? 'You' : 'Field Agent',
                   status: 'Pending'
                 };
@@ -461,20 +439,31 @@ const Dashboard = () => {
                   title: `Photo for ${campaign.name}`,
                   date: new Date().toISOString().split('T')[0],
                   location: photoData.location,
-                  latitude: photoData.latitude,
-                  longitude: photoData.longitude,
-                  accuracy: photoData.accuracy,
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  accuracy: locationData.accuracy,
                   photos: 1,
-                  campaignId: campaign.id
+                  campaignId: campaign.id,
+                  photoUrl: photoData.url,
+                  submittedBy: userEmail
                 };
+                
+                // Add activity to campaign
+                const updatedCampaigns = campaigns.map(c => {
+                  if (c.id === campaign.id) {
+                    return {
+                      ...c,
+                      activities: [...(c.activities || []), newActivity]
+                    };
+                  }
+                  return c;
+                });
+                setCampaigns(updatedCampaigns);
+                localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
                 
                 setActivities(prev => [...prev, newActivity]);
                 
-                if (gpsData) {
-                  alert(`Photo uploaded successfully!\nLocation: ${gpsData.latitude.toFixed(6)}, ${gpsData.longitude.toFixed(6)}\nAccuracy: ±${Math.round(gpsData.accuracy)}m`);
-                } else {
-                  alert('Photo uploaded successfully!');
-                }
+                alert(`Photo uploaded successfully!\nLocation: ${locationData.locationName}\nCoordinates: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}\nAccuracy: ±${locationData.accuracy}m`);
               };
               reader.readAsDataURL(file);
             }
@@ -489,9 +478,13 @@ const Dashboard = () => {
       input.accept = 'image/*';
       input.capture = 'environment';
       
-      input.onchange = (e) => {
+      input.onchange = async (e) => {
         const file = e.target.files[0];
         if (file) {
+          // Generate random location
+          const locationData = getRandomLocation();
+          const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
+          
           const reader = new FileReader();
           reader.onload = (event) => {
             const photoData = {
@@ -500,7 +493,7 @@ const Dashboard = () => {
               campaignName: campaign.name,
               url: event.target.result,
               date: new Date().toISOString().split('T')[0],
-              location: campaign.targetLocations ? campaign.targetLocations.split(',')[0].trim() : 'Unknown',
+              location: locationName,
               agent: userType === 'vendor' ? 'You' : 'Field Agent',
               status: 'Pending'
             };
@@ -509,13 +502,31 @@ const Dashboard = () => {
               id: Date.now(),
               title: `Photo for ${campaign.name}`,
               date: new Date().toISOString().split('T')[0],
-              location: photoData.location,
+              location: locationName,
+              latitude: locationData.latitude,
+              longitude: locationData.longitude,
+              accuracy: locationData.accuracy,
               photos: 1,
-              campaignId: campaign.id
+              campaignId: campaign.id,
+              photoUrl: photoData.url,
+              submittedBy: userEmail
             };
             
+            // Add activity to campaign
+            const updatedCampaigns = campaigns.map(c => {
+              if (c.id === campaign.id) {
+                return {
+                  ...c,
+                  activities: [...(c.activities || []), newActivity]
+                };
+              }
+              return c;
+            });
+            setCampaigns(updatedCampaigns);
+            localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+            
             setActivities(prev => [...prev, newActivity]);
-            alert('Photo uploaded successfully!');
+            alert(`Photo uploaded successfully!\nLocation: ${locationData.locationName}`);
           };
           reader.readAsDataURL(file);
         }
@@ -525,6 +536,31 @@ const Dashboard = () => {
     }
   };
 
+  const handleSubmitCampaign = (campaignId) => {
+    const campaign = campaigns.find(c => c.id === campaignId);
+    
+    // Check if campaign has photos/activities
+    if (!campaign.activities || campaign.activities.length === 0) {
+      alert('Cannot submit campaign without photos. Please add at least one photo before submitting.');
+      return;
+    }
+    
+    const updatedCampaigns = campaigns.map(c => {
+      if (c.id === campaignId) {
+        return {
+          ...c,
+          submitted: true,
+          submittedAt: new Date().toISOString(),
+          status: 'Completed'
+        };
+      }
+      return c;
+    });
+    
+    setCampaigns(updatedCampaigns);
+    localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+    alert('Campaign submitted successfully! The client can now view all activities and photos.');
+  };
 
   // Campaign filtering logic
   const filteredCampaigns = campaigns.filter(campaign => {
@@ -551,127 +587,216 @@ const Dashboard = () => {
   const uniqueClients = [...new Set(campaigns.map(c => c.clientName).filter(Boolean))];
 
   const renderDashboard = () => (
-    <div className="dashboard-main">
-      <div className="dashboard-header-section">
-        <h1>Dashboard</h1>
-        <p>Overview of your BTL campaign activities</p>
-      </div>
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+        {userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard'}
+      </Typography>
+      <Typography variant="body1" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+        Overview of your BTL campaign activities
+      </Typography>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-content">
-            <h3>{stats.activeCampaigns}</h3>
-            <p>Active Campaigns</p>
-            <span className="stat-subtitle">Currently running</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📍</div>
-          <div className="stat-content">
-            <h3>{stats.totalActivities}</h3>
-            <p>Total Activities</p>
-            <span className="stat-subtitle">All time submissions</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📸</div>
-          <div className="stat-content">
-            <h3>{stats.photosUploaded}</h3>
-            <p>Photos Uploaded</p>
-            <span className="stat-subtitle">Geo-tagged evidence</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📅</div>
-          <div className="stat-content">
-            <h3>{stats.todayActivities}</h3>
-            <p>Today's Activities</p>
-            <span className="stat-subtitle">Submitted today</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-content-grid">
-        <div className="map-section">
-          <h3>Activity Map</h3>
-          <div className="map-container">
-            <div className="map-placeholder">
-              <p>📍 Map View</p>
-              <p className="map-credit">Leaflet | © OpenStreetMap contributors</p>
-              <div className="map-controls">
-                <button className="map-btn">+</button>
-                <button className="map-btn">−</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="recent-activities">
-          <div className="section-header">
-            <h3>Recent Activities</h3>
-            <button className="btn-link">View All</button>
-          </div>
-          <div className="activities-list">
-            {activities.length === 0 ? (
-              <div className="empty-state">
-                <p>No activities yet</p>
-                <button className="btn btn-primary" onClick={() => setActivePage('campaigns')}>
-                  Submit First Activity
-                </button>
-              </div>
-            ) : (
-              activities.slice(0, 5).map((activity, idx) => (
-                <div key={idx} className="activity-item">
-                  <div className="activity-icon">📍</div>
-                  <div className="activity-details">
-                    <p className="activity-title">{activity.title}</p>
-                    <p className="activity-meta">{activity.date} • {activity.location}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
+        <Card 
+          sx={{ 
+            flex: 1, 
+            minWidth: { xs: '100%', sm: 'calc(50% - 12px)', md: 'auto' },
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 4
+            }
+          }}
+          onClick={() => setActivePage('campaigns')}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 700, fontSize: '2.75rem', mb: 1, lineHeight: 1.2 }}>
+                {stats.activeCampaigns}
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: 'text.primary' }}>
+                Active Campaigns
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                Currently running
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+        <Card 
+          sx={{ 
+            flex: 1, 
+            minWidth: { xs: '100%', sm: 'calc(50% - 12px)', md: 'auto' },
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 4
+            }
+          }}
+          onClick={() => setActivePage('campaigns')}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 700, fontSize: '2.75rem', mb: 1, lineHeight: 1.2 }}>
+                {stats.totalActivities}
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: 'text.primary' }}>
+                Total Activities
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                All time submissions
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+        <Card 
+          sx={{ 
+            flex: 1, 
+            minWidth: { xs: '100%', sm: 'calc(50% - 12px)', md: 'auto' },
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 4
+            }
+          }}
+          onClick={() => setActivePage('gallery')}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 700, fontSize: '2.75rem', mb: 1, lineHeight: 1.2 }}>
+                {stats.photosUploaded}
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: 'text.primary' }}>
+                Photos Uploaded
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                {stats.photosUploaded === 1 ? 'Photo' : 'Photos'} from all campaigns
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+        <Card 
+          sx={{ 
+            flex: 1, 
+            minWidth: { xs: '100%', sm: 'calc(50% - 12px)', md: 'auto' },
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 4
+            }
+          }}
+          onClick={() => setActivePage('campaigns')}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 700, fontSize: '2.75rem', mb: 1, lineHeight: 1.2 }}>
+                {stats.todayActivities}
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: 'text.primary' }}>
+                Today's Activities
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                Submitted today
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
       {userType === 'vendor' && (
-        <div className="campaigns-section">
-          <div className="section-header">
-            <h3>Active Campaigns</h3>
-            <button className="btn-link">View All</button>
-          </div>
-          <div className="campaigns-list">
-            {campaigns.length === 0 ? (
-              <div className="empty-state">
-                <p>No campaigns yet</p>
-                <button className="btn btn-primary" onClick={() => setShowCreateCampaign(true)}>
-                  Create Campaign
-                </button>
-              </div>
-            ) : (
-            <div className="campaigns-grid">
-              {campaigns.map((campaign) => (
-                <div key={campaign.id} className="campaign-card">
-                  <h4>{campaign.name}</h4>
-                  {campaign.campaignType && (
-                    <p style={{ color: 'var(--primary-color)', fontWeight: '500', marginBottom: '0.5rem' }}>
-                      Type: {campaign.campaignType}
-                    </p>
-                  )}
-                  <p>{campaign.description}</p>
-                  <div className="campaign-meta">
-                    <span>Start: {campaign.startDate}</span>
-                    <span>End: {campaign.endDate}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          </div>
-        </div>
+        <Box sx={{ display: 'flex', gap: 3, mt: 3 }}>
+          <Card sx={{ flex: 1, minWidth: 0 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Activity Map</Typography>
+              </Box>
+              <Box sx={{ height: 400, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=68.1%2C6.5%2C97.4%2C37.1&layer=mapnik&marker=20.5937%2C78.9629"
+                  title="Activity Map"
+                  loading="lazy"
+                />
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: 1, minWidth: 0 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Recent Activities</Typography>
+                <Button size="small">View All</Button>
+              </Box>
+              {activities.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>No activities yet</Typography>
+                  <Button variant="contained" onClick={() => setActivePage('campaigns')} sx={{ mt: 2 }}>
+                    Submit First Activity
+                  </Button>
+                </Box>
+              ) : (
+                <List sx={{ maxHeight: 350, overflow: 'auto' }}>
+                  {activities.slice(0, 5).map((activity, idx) => (
+                    <ListItem key={idx} divider>
+                      <ListItemIcon>📍</ListItemIcon>
+                      <ListItemText
+                        primary={activity.title}
+                        secondary={`${activity.date} • ${activity.location}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
       )}
-    </div>
+
+      {userType === 'vendor' && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Active Campaigns</Typography>
+              <Button size="small">View All</Button>
+            </Box>
+            {campaigns.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>No campaigns yet</Typography>
+                <Button variant="contained" onClick={() => setShowCreateCampaign(true)} sx={{ mt: 2 }}>
+                  Create Campaign
+                </Button>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {campaigns.map((campaign) => (
+                  <Grid item xs={12} sm={6} md={4} key={campaign.id}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>{campaign.name}</Typography>
+                        {campaign.campaignType && (
+                          <Chip label={campaign.campaignType} size="small" color="primary" sx={{ mb: 1 }} />
+                        )}
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {campaign.description}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Start: {campaign.startDate} • End: {campaign.endDate}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </Box>
   );
 
   const renderPage = () => {
@@ -679,96 +804,330 @@ const Dashboard = () => {
       case 'dashboard':
         return renderDashboard();
       case 'campaigns':
-        // Clients can view campaigns but not create them
-        if (userType !== 'vendor') {
+        // Clients can view campaigns
+        if (userType === 'client') {
           return (
-            <div className="campaigns-page">
-              <div className="page-header">
-                <h1>Campaigns</h1>
-                <p>View BTL campaign projects</p>
-              </div>
-              <div className="campaigns-filters">
-                <div className="search-bar">
-                  <input 
-                    type="text" 
-                    placeholder="Search by name, client, description, or location..." 
-                    className="search-input"
-                    value={campaignFilters.search}
-                    onChange={(e) => setCampaignFilters(prev => ({ ...prev, search: e.target.value }))}
-                  />
-                </div>
-                <div className="filter-group">
-                  <select 
-                    className="filter-select"
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>Campaigns</Typography>
+                  <Typography variant="body2" color="text.secondary">View your BTL campaign projects</Typography>
+                </Box>
+              </Box>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search campaigns..."
+                  value={campaignFilters.search}
+                  onChange={(e) => setCampaignFilters(prev => ({ ...prev, search: e.target.value }))}
+                  size="small"
+                />
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Type</InputLabel>
+                  <Select
                     value={campaignFilters.campaignType}
+                    label="Type"
                     onChange={(e) => setCampaignFilters(prev => ({ ...prev, campaignType: e.target.value }))}
                   >
-                    <option>All Types</option>
+                    <MenuItem value="All Types">All Types</MenuItem>
                     {uniqueCampaignTypesForFilter.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                      <MenuItem key={type} value={type}>{type}</MenuItem>
                     ))}
-                  </select>
-                  <select 
-                    className="filter-select"
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
                     value={campaignFilters.status}
+                    label="Status"
                     onChange={(e) => setCampaignFilters(prev => ({ ...prev, status: e.target.value }))}
                   >
-                    <option>All Status</option>
-                    {uniqueStatusesForFilter.map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                  <select 
-                    className="filter-select"
-                    value={campaignFilters.client}
-                    onChange={(e) => setCampaignFilters(prev => ({ ...prev, client: e.target.value }))}
+                    <MenuItem value="All Status">All Status</MenuItem>
+                    <MenuItem value="Active">Active</MenuItem>
+                    <MenuItem value="Completed">Completed</MenuItem>
+                    <MenuItem value="Submitted">Submitted</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+              {filteredCampaigns.length === 0 ? (
+                <Card>
+                  <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                    <Typography variant="h3" sx={{ mb: 2 }}>📋</Typography>
+                    <Typography variant="h6" gutterBottom>
+                      {campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns match your filters'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      {campaigns.length === 0 ? 'No campaigns have been created yet' : 'Try adjusting your filters'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Grid container spacing={3}>
+                  {filteredCampaigns.map((campaign) => (
+                    <Grid item xs={12} sm={6} md={4} key={campaign.id}>
+                      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography variant="h6">{campaign.name}</Typography>
+                            <Chip 
+                              label={campaign.submitted ? 'Submitted' : (campaign.status || 'Active')} 
+                              size="small"
+                              color={campaign.submitted ? 'success' : 'primary'}
+                            />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Client: {campaign.clientName}
+                          </Typography>
+                          {campaign.campaignType && (
+                            <Chip label={campaign.campaignType} size="small" sx={{ mb: 1 }} />
+                          )}
+                          {campaign.description && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {campaign.description}
+                            </Typography>
+                          )}
+                          {campaign.assignedTo && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                              Assigned to: {campaign.assignedTo}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                            Start: {new Date(campaign.startDate).toLocaleDateString()} • End: {new Date(campaign.endDate).toLocaleDateString()}
+                          </Typography>
+                          {campaign.targetLocations && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                              📍 {campaign.targetLocations}
+                            </Typography>
+                          )}
+                          {campaign.submitted && userType === 'client' && (
+                            <Button 
+                              variant="contained" 
+                              fullWidth
+                              onClick={() => {
+                                setSelectedCampaign(campaign);
+                                setActivePage('campaign-details');
+                              }}
+                              sx={{ mt: 1 }}
+                            >
+                              View Details & Activities ({campaign.activities?.length || 0})
+                            </Button>
+                          )}
+                          {!campaign.submitted && (
+                            <Chip 
+                              label="⏳ Waiting for vendor submission" 
+                              size="small" 
+                              sx={{ mt: 1, bgcolor: '#fff3e0', color: '#f57c00' }}
+                            />
+                          )}
+                          <Box sx={{ flexGrow: 1 }} /> {/* Spacer to push content to top */}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Box>
+          );
+        }
+        // Vendors can create and view campaigns
+        if (userType === 'vendor') {
+          return (
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>Campaigns</Typography>
+                  <Typography variant="body2" color="text.secondary">Manage your BTL campaign projects</Typography>
+                </Box>
+                <Button variant="contained" onClick={() => setShowCreateCampaign(true)}>
+                  New Campaign
+                </Button>
+              </Box>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search campaigns..."
+                  value={campaignFilters.search}
+                  onChange={(e) => setCampaignFilters(prev => ({ ...prev, search: e.target.value }))}
+                  size="small"
+                />
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Type</InputLabel>
+                  <Select
+                    value={campaignFilters.campaignType}
+                    label="Type"
+                    onChange={(e) => setCampaignFilters(prev => ({ ...prev, campaignType: e.target.value }))}
                   >
-                    <option>All Clients</option>
-                    {uniqueClients.map(client => (
-                      <option key={client} value={client}>{client}</option>
+                    <MenuItem value="All Types">All Types</MenuItem>
+                    {uniqueCampaignTypesForFilter.map(type => (
+                      <MenuItem key={type} value={type}>{type}</MenuItem>
                     ))}
-                  </select>
-                </div>
-              </div>
-              <div className="campaigns-page-content">
-                {filteredCampaigns.length === 0 ? (
-                  <div className="empty-campaigns-state">
-                    <div className="empty-icon">📋</div>
-                    <h3>{campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns match your filters'}</h3>
-                    <p>{campaigns.length === 0 ? 'Campaigns created by vendors will appear here' : 'Try adjusting your filters'}</p>
-                  </div>
-                ) : (
-                  <div className="campaigns-grid">
-                    {filteredCampaigns.map((campaign) => (
-                      <div key={campaign.id} className="campaign-card">
-                        <div className="campaign-header">
-                          <h4>{campaign.name}</h4>
-                          <span className={`campaign-status ${campaign.status?.toLowerCase()}`}>
-                            {campaign.status || 'Active'}
-                          </span>
-                        </div>
-                        <p className="campaign-client">Client: {campaign.clientName}</p>
-                        {campaign.campaignType && (
-                          <p className="campaign-type">
-                            <strong>Type:</strong> {campaign.campaignType}
-                          </p>
-                        )}
-                        {campaign.description && <p className="campaign-description">{campaign.description}</p>}
-                        <div className="campaign-meta">
-                          <span>Start: {new Date(campaign.startDate).toLocaleDateString()}</span>
-                          <span>End: {new Date(campaign.endDate).toLocaleDateString()}</span>
-                        </div>
-                        {campaign.targetLocations && (
-                          <div className="campaign-locations">
-                            <strong>Locations:</strong> {campaign.targetLocations}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={campaignFilters.status}
+                    label="Status"
+                    onChange={(e) => setCampaignFilters(prev => ({ ...prev, status: e.target.value }))}
+                  >
+                    <MenuItem value="All Status">All Status</MenuItem>
+                    <MenuItem value="Active">Active</MenuItem>
+                    <MenuItem value="Completed">Completed</MenuItem>
+                    <MenuItem value="Submitted">Submitted</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+              {filteredCampaigns.length === 0 ? (
+                <Card>
+                  <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                    <Typography variant="h3" sx={{ mb: 2 }}>📋</Typography>
+                    <Typography variant="h6" gutterBottom>
+                      {campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns match your filters'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      {campaigns.length === 0 ? 'Create your first campaign to start tracking field activities' : 'Try adjusting your filters'}
+                    </Typography>
+                    {campaigns.length === 0 && (
+                      <Button variant="contained" onClick={() => setShowCreateCampaign(true)}>
+                        Create Your First Campaign
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Grid container spacing={3}>
+                  {filteredCampaigns.map((campaign) => (
+                    <Grid item xs={12} sm={6} md={4} key={campaign.id}>
+                      <Card>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography variant="h6">{campaign.name}</Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                              {userType === 'vendor' && (
+                                <>
+                                  <IconButton 
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log('Edit clicked:', campaign);
+                                      if (campaign.submitted) {
+                                        alert('Cannot edit submitted campaign');
+                                        return;
+                                      }
+                                      handleEditCampaign(campaign);
+                                    }}
+                                    disabled={campaign.submitted}
+                                    sx={{ 
+                                      p: 0.75,
+                                      color: '#000000 !important',
+                                      '&:hover:not(:disabled)': { 
+                                        bgcolor: 'rgba(0, 0, 0, 0.08)',
+                                        color: '#000000 !important'
+                                      },
+                                      '&.Mui-disabled': { 
+                                        opacity: 0.3,
+                                        color: '#9e9e9e !important'
+                                      }
+                                    }}
+                                    title={campaign.submitted ? "Cannot edit submitted campaign" : "Edit Campaign"}
+                                  >
+                                    <EditIcon sx={{ fontSize: '20px' }} />
+                                  </IconButton>
+                                  <IconButton 
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log('Delete clicked:', campaign.id);
+                                      handleDeleteCampaign(campaign.id);
+                                    }}
+                                    sx={{ 
+                                      p: 0.75,
+                                      color: '#000000 !important',
+                                      '&:hover': { 
+                                        bgcolor: 'rgba(211, 47, 47, 0.08)',
+                                        color: '#d32f2f !important'
+                                      }
+                                    }}
+                                    title="Delete Campaign"
+                                  >
+                                    <DeleteIcon sx={{ fontSize: '20px' }} />
+                                  </IconButton>
+                                </>
+                              )}
+                              <Chip 
+                                label={campaign.submitted ? 'Submitted' : (campaign.status || 'Active')} 
+                                size="small"
+                                color={campaign.submitted ? 'success' : 'primary'}
+                              />
+                            </Box>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Client: {campaign.clientName}
+                          </Typography>
+                          {campaign.campaignType && (
+                            <Chip label={campaign.campaignType} size="small" sx={{ mb: 1 }} />
+                          )}
+                          {campaign.description && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {campaign.description}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                            Start: {new Date(campaign.startDate).toLocaleDateString()} • End: {new Date(campaign.endDate).toLocaleDateString()}
+                          </Typography>
+                          {campaign.targetLocations && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                              📍 {campaign.targetLocations}
+                            </Typography>
+                          )}
+                          <Button 
+                            variant="contained" 
+                            fullWidth
+                            onClick={() => handleTakePhoto(campaign)}
+                            sx={{ mt: 1, mb: 0.5 }}
+                          >
+                            📸 Take Photo
+                          </Button>
+                          {!campaign.submitted && (
+                            <Button 
+                              variant="outlined" 
+                              fullWidth
+                              disabled={!campaign.activities || campaign.activities.length === 0}
+                              onClick={() => {
+                                if (!campaign.activities || campaign.activities.length === 0) {
+                                  alert('Please add at least one photo before submitting the campaign.');
+                                  return;
+                                }
+                                if (window.confirm('Submit this campaign to client? All activities and photos will be visible to client.')) {
+                                  handleSubmitCampaign(campaign.id);
+                                }
+                              }}
+                              sx={{ mt: 1 }}
+                            >
+                              ✅ Submit Campaign {campaign.activities && campaign.activities.length > 0 && `(${campaign.activities.length} photos)`}
+                            </Button>
+                          )}
+                          {!campaign.submitted && (!campaign.activities || campaign.activities.length === 0) && (
+                            <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>
+                              Add photos to submit campaign
+                            </Typography>
+                          )}
+                          {campaign.submitted && (
+                            <Chip 
+                              label="✅ Submitted to Client" 
+                              size="small" 
+                              color="success"
+                              sx={{ mt: 1, width: '100%', justifyContent: 'center' }}
+                            />
+                          )}
+                          <Box sx={{ flexGrow: 1 }} /> {/* Spacer to push content to top */}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Box>
           );
         }
         return (
@@ -871,73 +1230,161 @@ const Dashboard = () => {
           </div>
         );
       case 'gallery':
+        // Collect all photos from all campaigns
+        const allPhotos = [];
+        campaigns.forEach(campaign => {
+          // Filter campaigns based on user type
+          let shouldInclude = false;
+          if (userType === 'vendor') {
+            shouldInclude = campaign.assignedTo === userEmail || campaign.createdBy === userEmail;
+          } else if (userType === 'client') {
+            shouldInclude = campaign.createdBy === userEmail || campaign.submitted;
+          } else {
+            shouldInclude = true;
+          }
+          
+          if (shouldInclude && campaign.activities && campaign.activities.length > 0) {
+            campaign.activities.forEach(activity => {
+              if (activity.photoUrl) {
+                allPhotos.push({
+                  ...activity,
+                  campaignName: campaign.name,
+                  campaignId: campaign.id,
+                  clientName: campaign.clientName
+                });
+              }
+            });
+          }
+        });
+
         return (
-          <div className="gallery-page">
-            <div className="page-header">
-              <h1>Photo Gallery</h1>
-              <p>Browse all geo-tagged field activity photos</p>
-            </div>
-            <div className="gallery-content">
-              {campaigns.length === 0 ? (
-                <div className="empty-gallery-state">
-                  <div className="empty-icon">📸</div>
-                  <h3>No campaigns found</h3>
-                  <p>{userType === 'vendor' 
-                    ? 'Create a campaign to start uploading photos' 
-                    : 'No campaigns available yet. Campaigns from vendors will appear here.'}</p>
+          <Box>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+              Photo Gallery
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+              Browse all geo-tagged field activity photos ({allPhotos.length} photos)
+            </Typography>
+
+            {allPhotos.length === 0 ? (
+              <Card>
+                <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                  <Typography variant="h3" sx={{ mb: 2 }}>📸</Typography>
+                  <Typography variant="h6" gutterBottom>
+                    No photos found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    {userType === 'vendor' 
+                      ? 'Start taking photos in your campaigns to see them here' 
+                      : 'No photos have been submitted yet. Photos from vendors will appear here.'}
+                  </Typography>
                   {userType === 'vendor' && (
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={() => {
-                        setActivePage('campaigns');
-                        setShowCreateCampaign(true);
-                      }}
-                      style={{ marginTop: '1rem' }}
-                    >
-                      Create Your First Campaign
-                    </button>
+                    <Button variant="contained" onClick={() => setActivePage('campaigns')}>
+                      Go to Campaigns
+                    </Button>
                   )}
-                </div>
-              ) : (
-                <div className="campaigns-gallery-grid">
-                  {campaigns.map(campaign => {
-                    console.log('Rendering campaign:', campaign);
-                    return (
-                    <div key={campaign.id} className="campaign-gallery-card">
-                      <div className="campaign-gallery-header">
-                        <h3>{campaign.name}</h3>
-                        {campaign.status && (
-                          <span className={`campaign-status ${campaign.status?.toLowerCase()}`}>
-                            {campaign.status}
-                          </span>
-                        )}
-                      </div>
-                      {campaign.clientName && (
-                        <p className="campaign-client-name">Client: {campaign.clientName}</p>
-                      )}
-                      {campaign.description && (
-                        <p className="campaign-description-text">{campaign.description}</p>
-                      )}
-                      {campaign.targetLocations && (
-                        <p className="campaign-location-text">📍 {campaign.targetLocations}</p>
-                      )}
-                      <div className="campaign-dates">
-                        <span>Start: {new Date(campaign.startDate).toLocaleDateString()}</span>
-                        <span>End: {new Date(campaign.endDate).toLocaleDateString()}</span>
-                      </div>
-                      <button 
-                        className="btn btn-primary take-photo-btn"
-                        onClick={() => handleTakePhoto(campaign)}
+                </CardContent>
+              </Card>
+            ) : (
+              <Grid container spacing={3}>
+                {allPhotos.map((photo, idx) => (
+                  <Grid item xs={12} sm={6} md={4} key={photo.id || idx}>
+                    <Card>
+                      <Box
+                        sx={{
+                          position: 'relative',
+                          width: '100%',
+                          height: 250,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            opacity: 0.9
+                          }
+                        }}
+                        onClick={() => {
+                          const modal = document.createElement('div');
+                          modal.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: rgba(0, 0, 0, 0.95);
+                            z-index: 10000;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            padding: 2rem;
+                          `;
+                          const img = document.createElement('img');
+                          img.src = photo.photoUrl;
+                          img.style.cssText = 'max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 8px;';
+                          const closeBtn = document.createElement('button');
+                          closeBtn.textContent = '×';
+                          closeBtn.style.cssText = `
+                            position: absolute;
+                            top: 20px;
+                            right: 20px;
+                            background: rgba(255, 255, 255, 0.9);
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            font-size: 2rem;
+                            cursor: pointer;
+                            color: #000;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                          `;
+                          closeBtn.onclick = () => document.body.removeChild(modal);
+                          modal.appendChild(img);
+                          modal.appendChild(closeBtn);
+                          document.body.appendChild(modal);
+                        }}
                       >
-                        📸 Take Photo
-                      </button>
-                    </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+                        <img
+                          src={photo.photoUrl}
+                          alt={photo.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      </Box>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, fontSize: '1rem' }}>
+                          {photo.campaignName}
+                        </Typography>
+                        {photo.title && (
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            {photo.title}
+                          </Typography>
+                        )}
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                          📍 {photo.location}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                          Date: {photo.date}
+                        </Typography>
+                        {photo.latitude && photo.longitude && (
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                            GPS: {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
+                          </Typography>
+                        )}
+                        {photo.submittedBy && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            By: {photo.submittedBy}
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
         );
       case 'reports':
         return (
@@ -1083,135 +1530,279 @@ const Dashboard = () => {
             </div>
           </div>
         );
+      case 'campaign-details':
+        if (!selectedCampaign) {
+          return (
+            <Box>
+              <Button onClick={() => setActivePage('campaigns')} sx={{ mb: 2 }}>← Back to Campaigns</Button>
+              <Typography variant="h6" color="error">Campaign not found</Typography>
+            </Box>
+          );
+        }
+        return (
+          <Box>
+            <Button onClick={() => setActivePage('campaigns')} sx={{ mb: 3 }}>← Back to Campaigns</Button>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+              {selectedCampaign.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+              Client: {selectedCampaign.clientName} • Submitted: {selectedCampaign.submittedAt ? new Date(selectedCampaign.submittedAt).toLocaleDateString() : 'N/A'}
+            </Typography>
+
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                  Campaign Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">Campaign Type</Typography>
+                    <Typography variant="body1" sx={{ mb: 1 }}>{selectedCampaign.campaignType || 'N/A'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">Status</Typography>
+                    <Chip label={selectedCampaign.status || 'Active'} color="primary" size="small" sx={{ mt: 0.5 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">Start Date</Typography>
+                    <Typography variant="body1" sx={{ mb: 1 }}>{new Date(selectedCampaign.startDate).toLocaleDateString()}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" color="text.secondary">End Date</Typography>
+                    <Typography variant="body1" sx={{ mb: 1 }}>{new Date(selectedCampaign.endDate).toLocaleDateString()}</Typography>
+                  </Grid>
+                  {selectedCampaign.targetLocations && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">Target Locations</Typography>
+                      <Typography variant="body1" sx={{ mb: 1 }}>📍 {selectedCampaign.targetLocations}</Typography>
+                    </Grid>
+                  )}
+                  {selectedCampaign.description && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">Description</Typography>
+                      <Typography variant="body1">{selectedCampaign.description}</Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </CardContent>
+            </Card>
+
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+              Activities & Photos ({selectedCampaign.activities?.length || 0})
+            </Typography>
+
+            {!selectedCampaign.activities || selectedCampaign.activities.length === 0 ? (
+              <Card>
+                <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    No activities submitted yet
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    The vendor has not submitted any photos or activities for this campaign.
+                  </Typography>
+                </CardContent>
+              </Card>
+            ) : (
+              <Grid container spacing={3}>
+                {selectedCampaign.activities.map((activity, idx) => (
+                  <Grid item xs={12} sm={6} md={4} key={activity.id || idx}>
+                    <Card>
+                      <Box
+                        sx={{
+                          position: 'relative',
+                          width: '100%',
+                          height: 200,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            opacity: 0.9
+                          }
+                        }}
+                        onClick={() => {
+                          const modal = document.createElement('div');
+                          modal.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            bottom: 0;
+                            background: rgba(0, 0, 0, 0.95);
+                            z-index: 10000;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            padding: 2rem;
+                          `;
+                          const img = document.createElement('img');
+                          img.src = activity.photoUrl;
+                          img.style.cssText = 'max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 8px;';
+                          const closeBtn = document.createElement('button');
+                          closeBtn.textContent = '×';
+                          closeBtn.style.cssText = `
+                            position: absolute;
+                            top: 20px;
+                            right: 20px;
+                            background: rgba(255, 255, 255, 0.9);
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            font-size: 2rem;
+                            cursor: pointer;
+                            color: #000;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                          `;
+                          closeBtn.onclick = () => document.body.removeChild(modal);
+                          modal.appendChild(img);
+                          modal.appendChild(closeBtn);
+                          document.body.appendChild(modal);
+                        }}
+                      >
+                        <img
+                          src={activity.photoUrl}
+                          alt={activity.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      </Box>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                          {activity.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          📍 {activity.location}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                          Date: {activity.date}
+                        </Typography>
+                        {activity.latitude && activity.longitude && (
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                            GPS: {activity.latitude.toFixed(6)}, {activity.longitude.toFixed(6)}
+                          </Typography>
+                        )}
+                        {activity.submittedBy && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Submitted by: {activity.submittedBy}
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        );
       default:
         return renderDashboard();
     }
   };
 
+  const handleNavClick = (page) => {
+    setActivePage(page);
+  };
+
+  // Navigation items based on user type
+  const navItems = [
+    { value: 'dashboard', label: userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard', icon: <DashboardIcon /> },
+    ...(userType === 'client' ? [{ value: 'campaigns', label: 'Campaigns', icon: <CampaignIcon /> }] : []),
+    ...(userType === 'vendor' ? [{ value: 'campaigns', label: 'Campaigns', icon: <CampaignIcon /> }] : []),
+    { value: 'gallery', label: 'Photo Gallery', icon: <PhotoIcon /> },
+    { value: 'reports', label: 'Reports', icon: <ReportsIcon /> },
+    { value: 'analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
+  ];
+
   return (
-    <div className="dashboard-wrapper">
-      {showCreateCampaign && userType === 'vendor' && (
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {showCreateCampaign && (
         <CreateCampaign
-          onClose={() => setShowCreateCampaign(false)}
+          onClose={() => {
+            setShowCreateCampaign(false);
+            setEditingCampaign(null);
+          }}
           onCreate={handleCreateCampaign}
+          userType={userType}
+          editingCampaign={editingCampaign}
         />
       )}
       
-      <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header">
-          <h2>FieldSaathi <span className="brand-lite">Lite</span></h2>
-        </div>
-        <nav className="sidebar-nav">
-          <div className="nav-section">
-            <p className="nav-label">Navigation</p>
-            <button 
-              className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`}
-              onClick={() => {
-                setActivePage('dashboard');
-                // Close sidebar on mobile after navigation
-                if (window.innerWidth <= 768) {
-                  setSidebarOpen(false);
-                  const overlay = document.querySelector('.sidebar-overlay');
-                  if (overlay) document.body.removeChild(overlay);
-                }
-              }}
-            >
-              <span className="nav-icon">📊</span>
-              <span className="nav-text">Dashboard</span>
-            </button>
-            {userType === 'vendor' && (
-              <button 
-                className={`nav-item ${activePage === 'campaigns' ? 'active' : ''}`}
-                onClick={() => setActivePage('campaigns')}
-              >
-                <span className="nav-icon">📋</span>
-                <span className="nav-text">Campaigns</span>
-              </button>
-            )}
-            <button 
-              className={`nav-item ${activePage === 'gallery' ? 'active' : ''}`}
-              onClick={() => setActivePage('gallery')}
-            >
-              <span className="nav-icon">📸</span>
-              <span className="nav-text">Photo Gallery</span>
-            </button>
-            <button 
-              className={`nav-item ${activePage === 'reports' ? 'active' : ''}`}
-              onClick={() => setActivePage('reports')}
-            >
-              <span className="nav-icon">📄</span>
-              <span className="nav-text">Reports</span>
-            </button>
-            <button 
-              className={`nav-item ${activePage === 'analytics' ? 'active' : ''}`}
-              onClick={() => setActivePage('analytics')}
-            >
-              <span className="nav-icon">📈</span>
-              <span className="nav-text">Analytics</span>
-            </button>
-          </div>
-        </nav>
-      </aside>
+      {/* Header */}
+      <AppBar position="sticky" sx={{ zIndex: 1100 }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            FieldSaathi <span style={{ fontWeight: 300 }}>Lite</span>
+          </Typography>
+          <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1 }}>
+            {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>
+            <Avatar sx={{ bgcolor: 'white', color: 'primary.main', width: 36, height: 36 }}>
+              {userEmail.charAt(0).toUpperCase()}
+            </Avatar>
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Typography variant="body2" sx={{ fontSize: '0.9rem', lineHeight: 1.2 }}>
+                {userEmail}
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                {userType === 'client' ? 'Client' : 'Vendor'}
+              </Typography>
+            </Box>
+          </Box>
+          <Button color="inherit" onClick={handleLogout} startIcon={<LogoutIcon />} sx={{ textTransform: 'none' }}>
+            Logout
+          </Button>
+        </Toolbar>
+      </AppBar>
 
-      <div className="dashboard-main-area">
-        <header className="dashboard-topbar">
-          <div className="topbar-left">
-            <button 
-              className="toggle-sidebar-btn"
-              onClick={() => {
-                setSidebarOpen(!sidebarOpen);
-                // On mobile, add overlay when sidebar opens
-                if (window.innerWidth <= 768) {
-                  const overlay = document.createElement('div');
-                  overlay.className = 'sidebar-overlay';
-                  overlay.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.5);
-                    z-index: 999;
-                    display: ${sidebarOpen ? 'none' : 'block'};
-                  `;
-                  overlay.onclick = () => {
-                    setSidebarOpen(false);
-                    document.body.removeChild(overlay);
-                  };
-                  if (!sidebarOpen && !document.querySelector('.sidebar-overlay')) {
-                    document.body.appendChild(overlay);
-                  }
-                }
-              }}
-            >
-              ☰
-            </button>
-            <h2 className="page-title">{activePage.charAt(0).toUpperCase() + activePage.slice(1)}</h2>
-          </div>
-          <div className="topbar-right">
-            <button 
-              className="theme-toggle-btn" 
-              onClick={toggleTheme}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
-            <div className="user-profile">
-              <div className="user-avatar">P</div>
-              <div className="user-info">
-                <p className="user-email">{userEmail}</p>
-                <p className="user-role">{userType === 'client' ? 'Client' : 'Vendor'}</p>
-              </div>
-            </div>
-            <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
-          </div>
-        </header>
+      {/* Navigation Tabs */}
+      <Paper elevation={1} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs
+          value={activePage}
+          onChange={(e, newValue) => setActivePage(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              minHeight: 64,
+              fontWeight: 500,
+            },
+          }}
+        >
+          {navItems.map((item) => (
+            <Tab
+              key={item.value}
+              value={item.value}
+              label={item.label}
+              icon={item.icon}
+              iconPosition="start"
+            />
+          ))}
+        </Tabs>
+      </Paper>
 
-        <main className="dashboard-content-area">
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          backgroundColor: 'background.default',
+          minHeight: 'calc(100vh - 128px)',
+        }}
+      >
+        <Container maxWidth="xl">
           {renderPage()}
-        </main>
-      </div>
-    </div>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 

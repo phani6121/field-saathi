@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { IconButton } from '@mui/material';
+import { Brightness4 as DarkModeIcon, Brightness7 as LightModeIcon } from '@mui/icons-material';
+import { useTheme } from '../contexts/ThemeContext';
 import './SignUp.css';
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -88,6 +92,20 @@ const SignUp = () => {
   return (
     <div className="signup-page">
       <div className="signup-container">
+        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+          <IconButton 
+            onClick={toggleTheme} 
+            sx={{ 
+              color: 'var(--text-secondary)',
+              '&:hover': {
+                color: 'var(--primary-color)',
+              }
+            }}
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          >
+            {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+          </IconButton>
+        </div>
         <div className="signup-header">
           <Link to="/" className="logo-link">
             <h1>FieldSaathi <span className="brand-lite">Lite</span></h1>

@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { IconButton } from '@mui/material';
+import { Brightness4 as DarkModeIcon, Brightness7 as LightModeIcon } from '@mui/icons-material';
+import { useTheme } from '../contexts/ThemeContext';
 import './SignIn.css';
 
 const SignIn = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { theme, toggleTheme } = useTheme();
   
   // Default credentials
   const defaultCredentials = {
@@ -134,6 +138,20 @@ const SignIn = () => {
   return (
     <div className="signin-page">
       <div className="signin-container">
+        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+          <IconButton 
+            onClick={toggleTheme} 
+            sx={{ 
+              color: 'var(--text-secondary)',
+              '&:hover': {
+                color: 'var(--primary-color)',
+              }
+            }}
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          >
+            {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+          </IconButton>
+        </div>
         <div className="signin-header">
           <Link to="/" className="logo-link">
             <h1>FieldSaathi <span className="brand-lite">Lite</span></h1>

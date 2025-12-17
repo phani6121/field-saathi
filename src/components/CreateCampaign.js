@@ -1,16 +1,31 @@
 import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Box,
+  Typography,
+} from '@mui/material';
 import './CreateCampaign.css';
 
-const CreateCampaign = ({ onClose, onCreate }) => {
+const CreateCampaign = ({ onClose, onCreate, userType, editingCampaign }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    clientName: '',
-    campaignType: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    targetLocations: '',
-    status: 'Active'
+    name: editingCampaign?.name || '',
+    clientName: editingCampaign?.clientName || '',
+    campaignType: editingCampaign?.campaignType || '',
+    description: editingCampaign?.description || '',
+    startDate: editingCampaign?.startDate || '',
+    endDate: editingCampaign?.endDate || '',
+    targetLocations: editingCampaign?.targetLocations || '',
+    status: editingCampaign?.status || 'Active',
+    assignedTo: editingCampaign?.assignedTo || '' // For clients to assign to vendor
   });
   const [errors, setErrors] = useState({});
 
@@ -54,149 +69,152 @@ const CreateCampaign = ({ onClose, onCreate }) => {
         startDate: '',
         endDate: '',
         targetLocations: '',
-        status: 'Active'
+        status: 'Active',
+        assignedTo: ''
       });
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h2>Create Your First Campaign</h2>
-        <p className="modal-subtitle">Set up a new BTL campaign for your client</p>
-        <button className="close-btn" onClick={onClose}>×</button>
-      </div>
-      <form className="campaign-form" onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="name">Campaign Name *</label>
-          <input
-            type="text"
-            id="name"
+    <Dialog open={true} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>{editingCampaign ? 'Edit Campaign' : 'Create Campaign'}</Typography>
+            <Typography variant="body2" color="text.secondary">{editingCampaign ? 'Update campaign details' : 'Set up a new BTL campaign for your client'}</Typography>
+          </Box>
+          <Button onClick={onClose} sx={{ minWidth: 'auto', p: 1 }}>×</Button>
+        </Box>
+      </DialogTitle>
+      <form onSubmit={handleSubmit}>
+      <DialogContent>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            label="Campaign Name *"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className={errors.name ? 'error' : ''}
+            error={!!errors.name}
+            helperText={errors.name}
             placeholder="e.g., Summer Product Launch"
+            fullWidth
           />
-          {errors.name && <span className="error-message">{errors.name}</span>}
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="clientName">Client Name *</label>
-          <input
-            type="text"
-            id="clientName"
+          <TextField
+            label="Client Name *"
             name="clientName"
             value={formData.clientName}
             onChange={handleChange}
-            className={errors.clientName ? 'error' : ''}
+            error={!!errors.clientName}
+            helperText={errors.clientName}
             placeholder="e.g., ABC Real Estate"
+            fullWidth
           />
-          {errors.clientName && <span className="error-message">{errors.clientName}</span>}
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="campaignType">Campaign Type *</label>
-          <select
-            id="campaignType"
-            name="campaignType"
-            value={formData.campaignType}
-            onChange={handleChange}
-            className={errors.campaignType ? 'error' : ''}
-          >
-            <option value="">Select campaign type</option>
-            <option value="Posters">Posters</option>
-            <option value="Banners">Banners</option>
-            <option value="Standees">Standees</option>
-            <option value="Hoardings">Hoardings</option>
-            <option value="Wall Paintings">Wall Paintings</option>
-            <option value="Bus Shelters">Bus Shelters</option>
-            <option value="Pole Kiosks">Pole Kiosks</option>
-            <option value="Retail Displays">Retail Displays</option>
-            <option value="Event Branding">Event Branding</option>
-            <option value="Vehicle Branding">Vehicle Branding</option>
-            <option value="Other">Other</option>
-          </select>
-          {errors.campaignType && <span className="error-message">{errors.campaignType}</span>}
-        </div>
+          <FormControl fullWidth error={!!errors.campaignType}>
+            <InputLabel>Campaign Type *</InputLabel>
+            <Select
+              name="campaignType"
+              value={formData.campaignType}
+              onChange={handleChange}
+              label="Campaign Type *"
+            >
+              <MenuItem value="">Select campaign type</MenuItem>
+              <MenuItem value="Posters">Posters</MenuItem>
+              <MenuItem value="Banners">Banners</MenuItem>
+              <MenuItem value="Standees">Standees</MenuItem>
+              <MenuItem value="Hoardings">Hoardings</MenuItem>
+              <MenuItem value="Wall Paintings">Wall Paintings</MenuItem>
+              <MenuItem value="Bus Shelters">Bus Shelters</MenuItem>
+              <MenuItem value="Pole Kiosks">Pole Kiosks</MenuItem>
+              <MenuItem value="Retail Displays">Retail Displays</MenuItem>
+              <MenuItem value="Event Branding">Event Branding</MenuItem>
+              <MenuItem value="Vehicle Branding">Vehicle Branding</MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
+            </Select>
+            {errors.campaignType && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.campaignType}</Typography>}
+          </FormControl>
 
-        <div className="form-group">
-          <label htmlFor="description">Description</label>
-          <textarea
-            id="description"
+          <TextField
+            label="Description"
             name="description"
             value={formData.description}
             onChange={handleChange}
             placeholder="Campaign details..."
-            rows="4"
+            multiline
+            rows={4}
+            fullWidth
           />
-        </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="startDate">Start Date *</label>
-            <input
-              type="date"
-              id="startDate"
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="Start Date *"
               name="startDate"
+              type="date"
               value={formData.startDate}
               onChange={handleChange}
-              className={errors.startDate ? 'error' : ''}
-              placeholder="mm/dd/yyyy"
+              error={!!errors.startDate}
+              helperText={errors.startDate}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
             />
-            {errors.startDate && <span className="error-message">{errors.startDate}</span>}
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="endDate">End Date *</label>
-            <input
-              type="date"
-              id="endDate"
+            <TextField
+              label="End Date *"
               name="endDate"
+              type="date"
               value={formData.endDate}
               onChange={handleChange}
-              className={errors.endDate ? 'error' : ''}
-              placeholder="mm/dd/yyyy"
+              error={!!errors.endDate}
+              helperText={errors.endDate}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
             />
-            {errors.endDate && <span className="error-message">{errors.endDate}</span>}
-          </div>
-        </div>
+          </Box>
 
-        <div className="form-group">
-          <label htmlFor="targetLocations">Target Locations</label>
-          <input
-            type="text"
-            id="targetLocations"
+          <TextField
+            label="Target Locations"
             name="targetLocations"
             value={formData.targetLocations}
             onChange={handleChange}
             placeholder="e.g., Mumbai, Pune, Nashik"
+            fullWidth
           />
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="status">Status</label>
-          <select
-            id="status"
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-          >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Completed">Completed</option>
-            <option value="Draft">Draft</option>
-          </select>
-        </div>
+          {userType === 'client' && (
+            <TextField
+              label="Assign to Vendor"
+              name="assignedTo"
+              value={formData.assignedTo}
+              onChange={handleChange}
+              placeholder="e.g., vendor@fieldsaathi.com"
+              helperText="Enter vendor email to assign this campaign"
+              fullWidth
+            />
+          )}
 
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary">Create Campaign</button>
-        </div>
+          <FormControl fullWidth>
+            <InputLabel>Status</InputLabel>
+            <Select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              label="Status"
+            >
+              <MenuItem value="Active">Active</MenuItem>
+              <MenuItem value="Inactive">Inactive</MenuItem>
+              <MenuItem value="Completed">Completed</MenuItem>
+              <MenuItem value="Draft">Draft</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button type="submit" variant="contained">{editingCampaign ? 'Update Campaign' : 'Create Campaign'}</Button>
+      </DialogActions>
       </form>
-      </div>
-    </div>
+    </Dialog>
   );
 };
 
