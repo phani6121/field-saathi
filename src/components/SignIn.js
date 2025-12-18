@@ -29,6 +29,16 @@ const SignIn = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Redirect if already logged in
+  useEffect(() => {
+    const userType = localStorage.getItem('userType');
+    if (userType) {
+      // User is already logged in, redirect to their dashboard
+      const dashboardPath = userType === 'client' ? '/client-dashboard' : '/vendor-dashboard';
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [navigate]);
+
   const handleQuickFill = (type) => {
     setFormData({
       email: defaultCredentials[type].email,
@@ -47,7 +57,9 @@ const SignIn = () => {
       // Store user type in localStorage
       localStorage.setItem('userType', role);
       localStorage.setItem('userEmail', defaultCredentials[role].email);
-      navigate('/dashboard');
+      const dashboardPath = role === 'client' ? '/client-dashboard' : '/vendor-dashboard';
+      // Normal navigation (not replace) to allow back button
+      navigate(dashboardPath);
     }, 1500);
   };
 
@@ -123,9 +135,12 @@ const SignIn = () => {
       
       if (isClient || isVendor) {
         // Store user type in localStorage
-        localStorage.setItem('userType', isClient ? 'client' : 'vendor');
+        const userType = isClient ? 'client' : 'vendor';
+        localStorage.setItem('userType', userType);
         localStorage.setItem('userEmail', formData.email);
-        navigate('/dashboard');
+        const dashboardPath = userType === 'client' ? '/client-dashboard' : '/vendor-dashboard';
+        // Normal navigation (not replace) to allow back button
+        navigate(dashboardPath);
       } else {
         setErrors({ 
           email: 'Invalid credentials',

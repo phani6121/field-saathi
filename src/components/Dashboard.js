@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   Box,
@@ -31,6 +31,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -43,12 +45,15 @@ import {
   Brightness7 as LightModeIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  ContentCopy as CopyIcon,
+  ContentPaste as PasteIcon,
 } from '@mui/icons-material';
 import './Dashboard.css';
 import CreateCampaign from './CreateCampaign';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const [activePage, setActivePage] = useState('dashboard');
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
@@ -68,9 +73,88 @@ const Dashboard = () => {
     status: 'All Status',
     client: 'All Clients'
   });
+  const [coordinateSearch, setCoordinateSearch] = useState('');
+  const [searchError, setSearchError] = useState('');
+  const [searchedCoordinate, setSearchedCoordinate] = useState(null);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   
   const userType = localStorage.getItem('userType') || 'client';
   const userEmail = localStorage.getItem('userEmail') || 'phanindra61214243@gmail.com';
+  const basePath = userType === 'client' ? '/client-dashboard' : '/vendor-dashboard';
+
+  // Get current page from URL
+  const getPageFromPath = (pathname) => {
+    if (pathname.match(/\/campaigns\/[^/]+$/)) return 'campaign-details';
+    if (pathname.includes('/campaigns')) return 'campaigns';
+    if (pathname.includes('/gallery')) return 'gallery';
+    if (pathname.includes('/reports')) return 'reports';
+    if (pathname.includes('/analytics')) return 'analytics';
+    return 'dashboard';
+  };
+
+  // Get campaign ID from URL if on campaign-details page
+  const getCampaignIdFromPath = (pathname) => {
+    const match = pathname.match(/\/campaigns\/([^/]+)$/);
+    return match ? match[1] : null;
+  };
+
+  // Sync activePage with URL and load campaign if on campaign-details
+  useEffect(() => {
+    const page = getPageFromPath(location.pathname);
+    setActivePage(page);
+    
+    // If on campaign-details page, load the campaign
+    if (page === 'campaign-details') {
+      const campaignId = getCampaignIdFromPath(location.pathname);
+      if (campaignId) {
+        const campaign = campaigns.find(c => c.id === campaignId);
+        if (campaign) {
+          setSelectedCampaign(campaign);
+        }
+      }
+    }
+  }, [location.pathname, campaigns]);
+
+  // Redirect to appropriate dashboard based on user type and URL
+  useEffect(() => {
+    const currentPath = location.pathname;
+    
+    // If accessing /dashboard, redirect to appropriate dashboard
+    if (currentPath === '/dashboard' || currentPath.startsWith('/dashboard/')) {
+      const subPath = currentPath.replace('/dashboard', '');
+      navigate(basePath + subPath, { replace: true });
+    }
+    // If accessing wrong dashboard, redirect to correct one
+    else if ((currentPath.startsWith('/client-dashboard') && userType !== 'client') || 
+             (currentPath.startsWith('/vendor-dashboard') && userType !== 'vendor')) {
+      const subPath = currentPath.replace(/^\/(client|vendor)-dashboard/, '');
+      navigate(basePath + subPath, { replace: true });
+    }
+    // If on base dashboard path without sub-path, ensure we're on the right base
+    else if (currentPath === basePath) {
+      // Already on correct base path
+    }
+  }, [location.pathname, userType, navigate, basePath]);
+
+  // Check authentication when accessing dashboard
+  // This handles forward navigation from sign-in page
+  useEffect(() => {
+    const userType = localStorage.getItem('userType');
+    
+    // If no user is logged in, redirect to sign-in
+    if (!userType) {
+      navigate('/signin', { replace: true });
+      return;
+    }
+    
+    // If user type doesn't match the dashboard they're trying to access, redirect
+    const currentPath = location.pathname;
+    if ((currentPath.startsWith('/client-dashboard') && userType !== 'client') ||
+        (currentPath.startsWith('/vendor-dashboard') && userType !== 'vendor')) {
+      const correctPath = userType === 'client' ? '/client-dashboard' : '/vendor-dashboard';
+      navigate(correctPath, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // Load campaigns and photos from localStorage on mount
   useEffect(() => {
@@ -183,37 +267,221 @@ const Dashboard = () => {
     }
   };
 
-  // Generate random location for testing/demo purposes
-  const getRandomLocation = () => {
-    // Random locations in India (for demo)
-    const locations = [
-      { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
-      { name: 'Delhi', lat: 28.6139, lng: 77.2090 },
-      { name: 'Bangalore', lat: 12.9716, lng: 77.5946 },
-      { name: 'Hyderabad', lat: 17.3850, lng: 78.4867 },
-      { name: 'Chennai', lat: 13.0827, lng: 80.2707 },
-      { name: 'Kolkata', lat: 22.5726, lng: 88.3639 },
-      { name: 'Pune', lat: 18.5204, lng: 73.8567 },
-      { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714 }
-    ];
-    
-    const randomLocation = locations[Math.floor(Math.random() * locations.length)];
-    
-    // Add small random offset to make it more realistic (±0.01 degrees ≈ 1km)
-    const latOffset = (Math.random() - 0.5) * 0.02;
-    const lngOffset = (Math.random() - 0.5) * 0.02;
-    
-    return {
-      latitude: randomLocation.lat + latOffset,
-      longitude: randomLocation.lng + lngOffset,
-      accuracy: Math.floor(Math.random() * 50) + 5, // Random accuracy 5-55 meters
-      locationName: randomLocation.name,
-      timestamp: new Date().toISOString()
-    };
+  const handleCopyCoordinates = (coordinates) => {
+    navigator.clipboard.writeText(coordinates).then(() => {
+      showNotification('GPS coordinates copied to clipboard!', 'success');
+    }).catch(err => {
+      console.error('Failed to copy coordinates:', err);
+      showNotification('Failed to copy coordinates', 'error');
+    });
   };
 
-  const handleTakePhoto = (campaign) => {
-    // No location permission needed - using random locations for demo
+  const showNotification = (message, severity = 'success') => {
+    setNotification({ open: true, message, severity });
+  };
+
+  const handleCloseNotification = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setNotification({ ...notification, open: false });
+  };
+
+  // Get all GPS coordinates from campaigns for map display
+  const getAllCampaignCoordinates = () => {
+    const allCoordinates = [];
+    campaigns.forEach(campaign => {
+      if (campaign.activities && campaign.activities.length > 0) {
+        campaign.activities.forEach(activity => {
+          if (activity.latitude && activity.longitude) {
+            // Avoid duplicates
+            const exists = allCoordinates.some(
+              coord => coord.lat === activity.latitude && coord.lng === activity.longitude
+            );
+            if (!exists) {
+              allCoordinates.push({
+                lat: activity.latitude,
+                lng: activity.longitude,
+                campaignName: campaign.name,
+                activityTitle: activity.title || 'Activity'
+              });
+            }
+          }
+        });
+      }
+    });
+    return allCoordinates;
+  };
+
+  // Parse coordinate search input
+  const parseCoordinates = (input) => {
+    if (!input || !input.trim()) return null;
+    
+    // Remove whitespace
+    const cleaned = input.trim();
+    
+    // Try different formats: "lat, lng", "lat,lng", "lat lng"
+    const patterns = [
+      /^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/, // lat, lng
+      /^(-?\d+\.?\d*)\s+(-?\d+\.?\d*)$/, // lat lng
+    ];
+    
+    for (const pattern of patterns) {
+      const match = cleaned.match(pattern);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        
+        // Validate latitude (-90 to 90)
+        if (lat < -90 || lat > 90) {
+          setSearchError('Latitude must be between -90 and 90');
+          return null;
+        }
+        
+        // Validate longitude (-180 to 180)
+        if (lng < -180 || lng > 180) {
+          setSearchError('Longitude must be between -180 and 180');
+          return null;
+        }
+        
+        setSearchError('');
+        return { lat, lng };
+      }
+    }
+    
+    setSearchError('Invalid format. Use: lat, lng (e.g., 19.0760, 72.8777)');
+    return null;
+  };
+
+  // Generate OpenStreetMap URL with markers
+  const generateMapUrl = (coordinates, searchCoord = null) => {
+    // If searching by coordinates, show that location
+    if (searchCoord) {
+      const padding = 0.01; // Small padding around searched location
+      const bbox = `${searchCoord.lng - padding}%2C${searchCoord.lat - padding}%2C${searchCoord.lng + padding}%2C${searchCoord.lat + padding}`;
+      const marker = `${searchCoord.lat}%2C${searchCoord.lng}`;
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+    }
+
+    if (coordinates.length === 0) {
+      // Default to India center if no coordinates
+      return 'https://www.openstreetmap.org/export/embed.html?bbox=68.1%2C6.5%2C97.4%2C37.1&layer=mapnik&marker=20.5937%2C78.9629';
+    }
+
+    // Calculate center point
+    const avgLat = coordinates.reduce((sum, c) => sum + c.lat, 0) / coordinates.length;
+    const avgLng = coordinates.reduce((sum, c) => sum + c.lng, 0) / coordinates.length;
+
+    // Calculate bounding box with padding
+    const lats = coordinates.map(c => c.lat);
+    const lngs = coordinates.map(c => c.lng);
+    const latRange = Math.max(...lats) - Math.min(...lats);
+    const lngRange = Math.max(...lngs) - Math.min(...lngs);
+    const padding = Math.max(latRange, lngRange, 0.05) * 0.3; // 30% padding
+    
+    const minLat = Math.min(...lats) - padding;
+    const maxLat = Math.max(...lats) + padding;
+    const minLng = Math.min(...lngs) - padding;
+    const maxLng = Math.max(...lngs) + padding;
+    
+    const bbox = `${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}`;
+
+    // For multiple markers, we'll use the center and show all in the bbox
+    // OpenStreetMap embed supports one marker, so we center on average
+    const marker = `${avgLat}%2C${avgLng}`;
+
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+  };
+
+  const handleCoordinateSearch = () => {
+    if (!coordinateSearch.trim()) {
+      setSearchError('');
+      setSearchedCoordinate(null);
+      return;
+    }
+    
+    const coord = parseCoordinates(coordinateSearch);
+    if (coord) {
+      setSearchedCoordinate(coord);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setCoordinateSearch('');
+    setSearchError('');
+    setSearchedCoordinate(null);
+  };
+
+  const handlePasteCoordinates = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setCoordinateSearch(text.trim());
+      setSearchError('');
+      // Auto-search after pasting
+      const coord = parseCoordinates(text.trim());
+      if (coord) {
+        setSearchedCoordinate(coord);
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+      alert('Failed to paste from clipboard. Please paste manually.');
+    }
+  };
+
+  // Get current GPS location from device
+  const getCurrentLocation = () => {
+    return new Promise((resolve, reject) => {
+      // Check if geolocation is available
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by your browser'));
+        return;
+      }
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const locationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: Math.round(position.coords.accuracy),
+            locationName: `Location (${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)})`,
+            timestamp: new Date().toISOString()
+          };
+          resolve(locationData);
+        },
+        (error) => {
+          let errorMessage = 'Location access denied. ';
+          if (error.code === error.PERMISSION_DENIED) {
+            errorMessage += 'Please enable location services in your browser settings and try again.';
+            showNotification('Location access denied. Please enable location services to capture photos with GPS coordinates.', 'error');
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMessage += 'Location information is unavailable.';
+            showNotification('Location information is unavailable. Please check your device settings.', 'error');
+          } else if (error.code === error.TIMEOUT) {
+            errorMessage += 'Location request timed out.';
+            showNotification('Location request timed out. Please try again.', 'error');
+          } else {
+            errorMessage += 'An unknown error occurred.';
+            showNotification('Failed to get location. Please enable location services.', 'error');
+          }
+          reject(new Error(errorMessage));
+        },
+        options
+      );
+    });
+  };
+
+  const handleTakePhoto = async (campaign) => {
+    // Check if geolocation is available
+    if (!navigator.geolocation) {
+      showNotification('Geolocation is not supported by your browser. Please use a modern browser.', 'error');
+      return;
+    }
 
     // Check if getUserMedia is available (for camera access)
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -266,10 +534,10 @@ const Dashboard = () => {
             cursor: pointer;
           `;
 
-          // Location status indicator (using random locations)
+          // Location status indicator
           const locationStatus = document.createElement('div');
           locationStatus.style.cssText = `
-            color: #4caf50;
+            color: #ff9800;
             font-size: 0.85rem;
             margin-bottom: 1rem;
             text-align: center;
@@ -278,7 +546,20 @@ const Dashboard = () => {
             justify-content: center;
             gap: 0.5rem;
           `;
-          locationStatus.innerHTML = '📍 Random location will be assigned';
+          locationStatus.innerHTML = '📍 Getting GPS location...';
+          
+          // Get location when camera opens
+          let locationData = null;
+          getCurrentLocation()
+            .then((loc) => {
+              locationData = loc;
+              locationStatus.innerHTML = `📍 Location: ${loc.latitude.toFixed(6)}, ${loc.longitude.toFixed(6)}`;
+              locationStatus.style.color = '#4caf50';
+            })
+            .catch((error) => {
+              locationStatus.innerHTML = '⚠️ Location access denied. Enable location to capture GPS coordinates.';
+              locationStatus.style.color = '#f44336';
+            });
           
           const cancelBtn = document.createElement('button');
           cancelBtn.textContent = 'Cancel';
@@ -299,10 +580,19 @@ const Dashboard = () => {
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
             
-            // Generate random location (no GPS needed)
-            const locationData = getRandomLocation();
-            const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
-            console.log('Random location generated:', locationData);
+            // Get current location if not already obtained
+            let currentLocation = locationData;
+            if (!currentLocation) {
+              try {
+                currentLocation = await getCurrentLocation();
+              } catch (error) {
+                showNotification('Cannot capture photo without location. Please enable location services.', 'error');
+                return;
+              }
+            }
+            
+            const locationName = `${currentLocation.locationName} (${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)})`;
+            console.log('GPS location obtained:', currentLocation);
             
             canvas.toBlob((blob) => {
               const reader = new FileReader();
@@ -355,7 +645,7 @@ const Dashboard = () => {
                 stream.getTracks().forEach(track => track.stop());
                 document.body.removeChild(modal);
                 
-                alert(`Photo captured successfully!\nLocation: ${locationData.locationName}\nCoordinates: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}\nAccuracy: ±${locationData.accuracy}m`);
+                showNotification(`Photo captured successfully! Location: ${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`, 'success');
               };
               reader.readAsDataURL(blob);
             }, 'image/jpeg', 0.9);
@@ -384,60 +674,64 @@ const Dashboard = () => {
           input.onchange = async (e) => {
             const file = e.target.files[0];
             if (file) {
-              // Generate random location
-              const locationData = getRandomLocation();
-              const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
-              console.log('Random location generated:', locationData);
+              // Get current GPS location
+              try {
+                const locationData = await getCurrentLocation();
+                const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
+                console.log('GPS location obtained:', locationData);
               
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                const photoData = {
-                  id: Date.now(),
-                  campaignId: campaign.id,
-                  campaignName: campaign.name,
-                  url: event.target.result,
-                  date: new Date().toISOString().split('T')[0],
-                  location: locationName,
-                  latitude: locationData.latitude,
-                  longitude: locationData.longitude,
-                  accuracy: locationData.accuracy,
-                  gpsTimestamp: locationData.timestamp,
-                  agent: userType === 'vendor' ? 'You' : 'Field Agent',
-                  status: 'Pending'
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  const photoData = {
+                    id: Date.now(),
+                    campaignId: campaign.id,
+                    campaignName: campaign.name,
+                    url: event.target.result,
+                    date: new Date().toISOString().split('T')[0],
+                    location: locationName,
+                    latitude: locationData.latitude,
+                    longitude: locationData.longitude,
+                    accuracy: locationData.accuracy,
+                    gpsTimestamp: locationData.timestamp,
+                    agent: userType === 'vendor' ? 'You' : 'Field Agent',
+                    status: 'Pending'
+                  };
+                  
+                  const newActivity = {
+                    id: Date.now(),
+                    title: `Photo for ${campaign.name}`,
+                    date: new Date().toISOString().split('T')[0],
+                    location: photoData.location,
+                    latitude: locationData.latitude,
+                    longitude: locationData.longitude,
+                    accuracy: locationData.accuracy,
+                    photos: 1,
+                    campaignId: campaign.id,
+                    photoUrl: photoData.url,
+                    submittedBy: userEmail
+                  };
+                  
+                  // Add activity to campaign
+                  const updatedCampaigns = campaigns.map(c => {
+                    if (c.id === campaign.id) {
+                      return {
+                        ...c,
+                        activities: [...(c.activities || []), newActivity]
+                      };
+                    }
+                    return c;
+                  });
+                  setCampaigns(updatedCampaigns);
+                  localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+                  
+                  setActivities(prev => [...prev, newActivity]);
+                  
+                  showNotification(`Photo uploaded successfully! Location: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`, 'success');
                 };
-                
-                const newActivity = {
-                  id: Date.now(),
-                  title: `Photo for ${campaign.name}`,
-                  date: new Date().toISOString().split('T')[0],
-                  location: photoData.location,
-                  latitude: locationData.latitude,
-                  longitude: locationData.longitude,
-                  accuracy: locationData.accuracy,
-                  photos: 1,
-                  campaignId: campaign.id,
-                  photoUrl: photoData.url,
-                  submittedBy: userEmail
-                };
-                
-                // Add activity to campaign
-                const updatedCampaigns = campaigns.map(c => {
-                  if (c.id === campaign.id) {
-                    return {
-                      ...c,
-                      activities: [...(c.activities || []), newActivity]
-                    };
-                  }
-                  return c;
-                });
-                setCampaigns(updatedCampaigns);
-                localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
-                
-                setActivities(prev => [...prev, newActivity]);
-                
-                alert(`Photo uploaded successfully!\nLocation: ${locationData.locationName}\nCoordinates: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}\nAccuracy: ±${locationData.accuracy}m`);
-              };
-              reader.readAsDataURL(file);
+                reader.readAsDataURL(file);
+              } catch (error) {
+                showNotification('Cannot upload photo without location. Please enable location services.', 'error');
+              }
             }
           };
           
@@ -453,54 +747,63 @@ const Dashboard = () => {
       input.onchange = async (e) => {
         const file = e.target.files[0];
         if (file) {
-          // Generate random location
-          const locationData = getRandomLocation();
-          const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
-          
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const photoData = {
-              id: Date.now(),
-              campaignId: campaign.id,
-              campaignName: campaign.name,
-              url: event.target.result,
-              date: new Date().toISOString().split('T')[0],
-              location: locationName,
-              agent: userType === 'vendor' ? 'You' : 'Field Agent',
-              status: 'Pending'
+          // Get current GPS location
+          try {
+            const locationData = await getCurrentLocation();
+            const locationName = `${locationData.locationName} (${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)})`;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const photoData = {
+                id: Date.now(),
+                campaignId: campaign.id,
+                campaignName: campaign.name,
+                url: event.target.result,
+                date: new Date().toISOString().split('T')[0],
+                location: locationName,
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                accuracy: locationData.accuracy,
+                gpsTimestamp: locationData.timestamp,
+                agent: userType === 'vendor' ? 'You' : 'Field Agent',
+                status: 'Pending'
+              };
+              
+              const newActivity = {
+                id: Date.now(),
+                title: `Photo for ${campaign.name}`,
+                date: new Date().toISOString().split('T')[0],
+                location: locationName,
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                accuracy: locationData.accuracy,
+                photos: 1,
+                campaignId: campaign.id,
+                photoUrl: photoData.url,
+                submittedBy: userEmail
+              };
+              
+              // Add activity to campaign
+              const updatedCampaigns = campaigns.map(c => {
+                if (c.id === campaign.id) {
+                  return {
+                    ...c,
+                    activities: [...(c.activities || []), newActivity]
+                  };
+                }
+                return c;
+              });
+              setCampaigns(updatedCampaigns);
+              localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
+              
+              setActivities(prev => [...prev, newActivity]);
+              
+              showNotification(`Photo uploaded successfully! Location: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`, 'success');
             };
-            
-            const newActivity = {
-              id: Date.now(),
-              title: `Photo for ${campaign.name}`,
-              date: new Date().toISOString().split('T')[0],
-              location: locationName,
-              latitude: locationData.latitude,
-              longitude: locationData.longitude,
-              accuracy: locationData.accuracy,
-              photos: 1,
-              campaignId: campaign.id,
-              photoUrl: photoData.url,
-              submittedBy: userEmail
-            };
-            
-            // Add activity to campaign
-            const updatedCampaigns = campaigns.map(c => {
-              if (c.id === campaign.id) {
-                return {
-                  ...c,
-                  activities: [...(c.activities || []), newActivity]
-                };
-              }
-              return c;
-            });
-            setCampaigns(updatedCampaigns);
-            localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
-            
-            setActivities(prev => [...prev, newActivity]);
-            alert(`Photo uploaded successfully!\nLocation: ${locationData.locationName}`);
-          };
-          reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+          } catch (error) {
+            showNotification('Cannot upload photo without location. Please enable location services.', 'error');
+          }
         }
       };
       
@@ -513,7 +816,7 @@ const Dashboard = () => {
     
     // Check if campaign has photos/activities
     if (!campaign.activities || campaign.activities.length === 0) {
-      alert('Cannot submit campaign without photos. Please add at least one photo before submitting.');
+      showNotification('Cannot submit campaign without photos. Please add at least one photo before submitting.', 'warning');
       return;
     }
     
@@ -531,7 +834,7 @@ const Dashboard = () => {
     
     setCampaigns(updatedCampaigns);
     localStorage.setItem('campaigns', JSON.stringify(updatedCampaigns));
-    alert('Campaign submitted successfully! The client can now view all activities and photos.');
+    showNotification('Campaign submitted successfully! The client can now view all activities and photos.', 'success');
   };
 
   // Campaign filtering logic
@@ -579,7 +882,7 @@ const Dashboard = () => {
               boxShadow: 4
             }
           }}
-          onClick={() => setActivePage('campaigns')}
+          onClick={() => navigate(`${basePath}/campaigns`)}
         >
           <CardContent sx={{ p: 4 }}>
             <Box>
@@ -606,7 +909,7 @@ const Dashboard = () => {
               boxShadow: 4
             }
           }}
-          onClick={() => setActivePage('campaigns')}
+          onClick={() => navigate(`${basePath}/campaigns`)}
         >
           <CardContent sx={{ p: 4 }}>
             <Box>
@@ -633,7 +936,7 @@ const Dashboard = () => {
               boxShadow: 4
             }
           }}
-          onClick={() => setActivePage('gallery')}
+          onClick={() => navigate(`${basePath}/gallery`)}
         >
           <CardContent sx={{ p: 4 }}>
             <Box>
@@ -660,7 +963,7 @@ const Dashboard = () => {
               boxShadow: 4
             }
           }}
-          onClick={() => setActivePage('campaigns')}
+          onClick={() => navigate(`${basePath}/campaigns`)}
         >
           <CardContent sx={{ p: 4 }}>
             <Box>
@@ -678,96 +981,6 @@ const Dashboard = () => {
         </Card>
       </Box>
 
-      {userType === 'vendor' && (
-        <Box sx={{ display: 'flex', gap: 3, mt: 3 }}>
-          <Card sx={{ flex: 1, minWidth: 0 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Activity Map</Typography>
-              </Box>
-              <Box sx={{ height: 400, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                <iframe
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  src="https://www.openstreetmap.org/export/embed.html?bbox=68.1%2C6.5%2C97.4%2C37.1&layer=mapnik&marker=20.5937%2C78.9629"
-                  title="Activity Map"
-                  loading="lazy"
-                />
-              </Box>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ flex: 1, minWidth: 0 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Recent Activities</Typography>
-                <Button size="small">View All</Button>
-              </Box>
-              {activities.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>No activities yet</Typography>
-                  <Button variant="contained" onClick={() => setActivePage('campaigns')} sx={{ mt: 2 }}>
-                    Submit First Activity
-                  </Button>
-                </Box>
-              ) : (
-                <List sx={{ maxHeight: 350, overflow: 'auto' }}>
-                  {activities.slice(0, 5).map((activity, idx) => (
-                    <ListItem key={idx} divider>
-                      <ListItemIcon>📍</ListItemIcon>
-                      <ListItemText
-                        primary={activity.title}
-                        secondary={`${activity.date} • ${activity.location}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </CardContent>
-          </Card>
-        </Box>
-      )}
-
-      {userType === 'vendor' && (
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Active Campaigns</Typography>
-              <Button size="small">View All</Button>
-            </Box>
-            {campaigns.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>No campaigns yet</Typography>
-                <Button variant="contained" onClick={() => setShowCreateCampaign(true)} sx={{ mt: 2 }}>
-                  Create Campaign
-                </Button>
-              </Box>
-            ) : (
-              <Grid container spacing={2}>
-                {campaigns.map((campaign) => (
-                  <Grid item xs={12} sm={6} md={4} key={campaign.id}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>{campaign.name}</Typography>
-                        {campaign.campaignType && (
-                          <Chip label={campaign.campaignType} size="small" color="primary" sx={{ mb: 1 }} />
-                        )}
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {campaign.description}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Start: {campaign.startDate} • End: {campaign.endDate}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </Box>
   );
 
@@ -866,18 +1079,13 @@ const Dashboard = () => {
                           <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                             Start: {new Date(campaign.startDate).toLocaleDateString()} • End: {new Date(campaign.endDate).toLocaleDateString()}
                           </Typography>
-                          {campaign.targetLocations && (
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                              📍 {campaign.targetLocations}
-                            </Typography>
-                          )}
                           {campaign.submitted && userType === 'client' && (
                             <Button 
                               variant="contained" 
                               fullWidth
                               onClick={() => {
                                 setSelectedCampaign(campaign);
-                                setActivePage('campaign-details');
+                                navigate(`${basePath}/campaigns/${campaign.id}`);
                               }}
                               sx={{ mt: 1 }}
                             >
@@ -1047,19 +1255,16 @@ const Dashboard = () => {
                           <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                             Start: {new Date(campaign.startDate).toLocaleDateString()} • End: {new Date(campaign.endDate).toLocaleDateString()}
                           </Typography>
-                          {campaign.targetLocations && (
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                              📍 {campaign.targetLocations}
-                            </Typography>
+                          {!campaign.submitted && (
+                            <Button 
+                              variant="contained" 
+                              fullWidth
+                              onClick={() => handleTakePhoto(campaign)}
+                              sx={{ mt: 1, mb: 0.5 }}
+                            >
+                              📸 Take Photo
+                            </Button>
                           )}
-                          <Button 
-                            variant="contained" 
-                            fullWidth
-                            onClick={() => handleTakePhoto(campaign)}
-                            sx={{ mt: 1, mb: 0.5 }}
-                          >
-                            📸 Take Photo
-                          </Button>
                           {!campaign.submitted && (
                             <Button 
                               variant="outlined" 
@@ -1251,7 +1456,7 @@ const Dashboard = () => {
                       : 'No photos have been submitted yet. Photos from vendors will appear here.'}
                   </Typography>
                   {userType === 'vendor' && (
-                    <Button variant="contained" onClick={() => setActivePage('campaigns')}>
+                    <Button variant="contained" onClick={() => navigate(`${basePath}/campaigns`)}>
                       Go to Campaigns
                     </Button>
                   )}
@@ -1341,9 +1546,53 @@ const Dashboard = () => {
                           Date: {photo.date}
                         </Typography>
                         {photo.latitude && photo.longitude && (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                            GPS: {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            <Typography 
+                              variant="caption" 
+                              color="primary" 
+                              display="block" 
+                              sx={{ 
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                '&:hover': {
+                                  color: 'primary.dark'
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const coord = { lat: photo.latitude, lng: photo.longitude };
+                                setSearchedCoordinate(coord);
+                                setCoordinateSearch(`${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}`);
+                                // Scroll to map after a short delay to ensure state update
+                                setTimeout(() => {
+                                  const mapElement = document.getElementById('photo-locations-map');
+                                  if (mapElement) {
+                                    mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                  }
+                                }, 100);
+                              }}
+                            >
+                              GPS: {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyCoordinates(`${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}`);
+                              }}
+                              sx={{ 
+                                p: 0.5,
+                                color: 'text.secondary',
+                                '&:hover': {
+                                  color: 'primary.main',
+                                  bgcolor: 'action.hover'
+                                }
+                              }}
+                              title="Copy coordinates"
+                            >
+                              <CopyIcon sx={{ fontSize: '14px' }} />
+                            </IconButton>
+                          </Box>
                         )}
                         {photo.submittedBy && (
                           <Typography variant="caption" color="text.secondary" display="block">
@@ -1356,6 +1605,114 @@ const Dashboard = () => {
                 ))}
               </Grid>
             )}
+
+            {/* Map Section - Full Width */}
+            {(() => {
+              const allCoordinates = getAllCampaignCoordinates();
+              const mapUrl = generateMapUrl(allCoordinates, searchedCoordinate);
+              
+              return (
+                <Card id="photo-locations-map" sx={{ mt: 4 }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>Photo Locations Map</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <TextField
+                          size="small"
+                          placeholder="Search by coordinates (e.g., 19.0760, 72.8777)"
+                          value={coordinateSearch}
+                          onChange={(e) => {
+                            setCoordinateSearch(e.target.value);
+                            setSearchError('');
+                          }}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleCoordinateSearch();
+                            }
+                          }}
+                          onPaste={(e) => {
+                            // Handle paste event
+                            setTimeout(() => {
+                              const pastedText = e.clipboardData.getData('text');
+                              const coord = parseCoordinates(pastedText);
+                              if (coord) {
+                                setSearchedCoordinate(coord);
+                              }
+                            }, 0);
+                          }}
+                          error={!!searchError}
+                          helperText={searchError || 'Enter lat, lng to search'}
+                          sx={{ minWidth: 280 }}
+                          InputProps={{
+                            endAdornment: (
+                              <IconButton
+                                size="small"
+                                onClick={handlePasteCoordinates}
+                                sx={{ 
+                                  mr: -1,
+                                  '&:hover': {
+                                    bgcolor: 'transparent'
+                                  }
+                                }}
+                                title="Paste coordinates from clipboard"
+                              >
+                                <PasteIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                              </IconButton>
+                            )
+                          }}
+                        />
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={handleCoordinateSearch}
+                          sx={{ height: '40px' }}
+                        >
+                          Search
+                        </Button>
+                        {searchedCoordinate && (
+                          <Button 
+                            variant="outlined" 
+                            size="small"
+                            onClick={handleClearSearch}
+                            sx={{ height: '40px' }}
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ height: 500, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', position: 'relative' }}>
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        src={mapUrl}
+                        title="Photo Locations Map"
+                        loading="lazy"
+                        key={searchedCoordinate ? `${searchedCoordinate.lat}-${searchedCoordinate.lng}` : 'all-locations'}
+                      />
+                      {searchedCoordinate && (
+                        <Box sx={{ position: 'absolute', bottom: 10, left: 10, bgcolor: 'background.paper', p: 1.5, borderRadius: 1, boxShadow: 2, maxWidth: '300px' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                            Searched Location
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.8rem' }}>
+                            📍 {searchedCoordinate.lat.toFixed(6)}, {searchedCoordinate.lng.toFixed(6)}
+                          </Typography>
+                        </Box>
+                      )}
+                      {!searchedCoordinate && allCoordinates.length === 0 && (
+                        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No GPS coordinates available. Add activities with photos to see locations on the map.
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </Box>
         );
       case 'reports':
@@ -1506,14 +1863,14 @@ const Dashboard = () => {
         if (!selectedCampaign) {
           return (
             <Box>
-              <Button onClick={() => setActivePage('campaigns')} sx={{ mb: 2 }}>← Back to Campaigns</Button>
+              <Button onClick={() => navigate(`${basePath}/campaigns`)} sx={{ mb: 2 }}>← Back to Campaigns</Button>
               <Typography variant="h6" color="error">Campaign not found</Typography>
             </Box>
           );
         }
         return (
           <Box>
-            <Button onClick={() => setActivePage('campaigns')} sx={{ mb: 3 }}>← Back to Campaigns</Button>
+            <Button onClick={() => navigate(`${basePath}/campaigns`)} sx={{ mb: 3 }}>← Back to Campaigns</Button>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
               {selectedCampaign.name}
             </Typography>
@@ -1653,9 +2010,53 @@ const Dashboard = () => {
                           Date: {activity.date}
                         </Typography>
                         {activity.latitude && activity.longitude && (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                            GPS: {activity.latitude.toFixed(6)}, {activity.longitude.toFixed(6)}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                            <Typography 
+                              variant="caption" 
+                              color="primary" 
+                              display="block" 
+                              sx={{ 
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                '&:hover': {
+                                  color: 'primary.dark'
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const coord = { lat: activity.latitude, lng: activity.longitude };
+                                setSearchedCoordinate(coord);
+                                setCoordinateSearch(`${activity.latitude.toFixed(6)}, ${activity.longitude.toFixed(6)}`);
+                                // Scroll to map after a short delay to ensure state update
+                                setTimeout(() => {
+                                  const mapElement = document.getElementById('campaign-details-map');
+                                  if (mapElement) {
+                                    mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                  }
+                                }, 100);
+                              }}
+                            >
+                              GPS: {activity.latitude.toFixed(6)}, {activity.longitude.toFixed(6)}
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyCoordinates(`${activity.latitude.toFixed(6)}, ${activity.longitude.toFixed(6)}`);
+                              }}
+                              sx={{ 
+                                p: 0.5,
+                                color: 'text.secondary',
+                                '&:hover': {
+                                  color: 'primary.main',
+                                  bgcolor: 'action.hover'
+                                }
+                              }}
+                              title="Copy coordinates"
+                            >
+                              <CopyIcon sx={{ fontSize: '14px' }} />
+                            </IconButton>
+                          </Box>
                         )}
                         {activity.submittedBy && (
                           <Typography variant="caption" color="text.secondary" display="block">
@@ -1668,6 +2069,124 @@ const Dashboard = () => {
                 ))}
               </Grid>
             )}
+
+            {/* Map Section - Campaign Details */}
+            {(() => {
+              // Get all coordinates from this campaign's activities
+              const campaignCoordinates = selectedCampaign.activities
+                ? selectedCampaign.activities
+                    .filter(act => act.latitude && act.longitude)
+                    .map(act => ({
+                      lat: act.latitude,
+                      lng: act.longitude,
+                      title: act.title || 'Activity Location'
+                    }))
+                : [];
+              
+              // Use searched coordinate if available, otherwise show all campaign coordinates
+              const mapUrl = generateMapUrl(campaignCoordinates, searchedCoordinate);
+              
+              return (
+                <Card id="campaign-details-map" sx={{ mt: 4 }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>Campaign Locations Map</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <TextField
+                          size="small"
+                          placeholder="Search by coordinates (e.g., 19.0760, 72.8777)"
+                          value={coordinateSearch}
+                          onChange={(e) => {
+                            setCoordinateSearch(e.target.value);
+                            setSearchError('');
+                          }}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleCoordinateSearch();
+                            }
+                          }}
+                          onPaste={(e) => {
+                            setTimeout(() => {
+                              const pastedText = e.clipboardData.getData('text');
+                              const coord = parseCoordinates(pastedText);
+                              if (coord) {
+                                setSearchedCoordinate(coord);
+                              }
+                            }, 0);
+                          }}
+                          error={!!searchError}
+                          helperText={searchError || 'Enter lat, lng to search'}
+                          sx={{ minWidth: 280 }}
+                          InputProps={{
+                            endAdornment: (
+                              <IconButton
+                                size="small"
+                                onClick={handlePasteCoordinates}
+                                sx={{ 
+                                  mr: -1,
+                                  '&:hover': {
+                                    bgcolor: 'transparent'
+                                  }
+                                }}
+                                title="Paste coordinates from clipboard"
+                              >
+                                <PasteIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                              </IconButton>
+                            )
+                          }}
+                        />
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={handleCoordinateSearch}
+                          sx={{ height: '40px' }}
+                        >
+                          Search
+                        </Button>
+                        {searchedCoordinate && (
+                          <Button 
+                            variant="outlined" 
+                            size="small"
+                            onClick={handleClearSearch}
+                            sx={{ height: '40px' }}
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ height: 500, borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', position: 'relative' }}>
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        src={mapUrl}
+                        title="Campaign Locations Map"
+                        loading="lazy"
+                        key={searchedCoordinate ? `${searchedCoordinate.lat}-${searchedCoordinate.lng}` : 'all-locations'}
+                      />
+                      {searchedCoordinate && (
+                        <Box sx={{ position: 'absolute', bottom: 10, left: 10, bgcolor: 'background.paper', p: 1.5, borderRadius: 1, boxShadow: 2, maxWidth: '300px' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                            Searched Location
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.8rem' }}>
+                            📍 {searchedCoordinate.lat.toFixed(6)}, {searchedCoordinate.lng.toFixed(6)}
+                          </Typography>
+                        </Box>
+                      )}
+                      {!searchedCoordinate && campaignCoordinates.length === 0 && (
+                        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No GPS coordinates available. Activities with photos will show locations on the map.
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </Box>
         );
       default:
@@ -1676,7 +2195,8 @@ const Dashboard = () => {
   };
 
   const handleNavClick = (page) => {
-    setActivePage(page);
+    const path = page === 'dashboard' ? basePath : `${basePath}/${page}`;
+    navigate(path);
   };
 
   // Navigation items based on user type
@@ -1684,7 +2204,7 @@ const Dashboard = () => {
     { value: 'dashboard', label: userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard', icon: <DashboardIcon /> },
     ...(userType === 'client' ? [{ value: 'campaigns', label: 'Campaigns', icon: <CampaignIcon /> }] : []),
     ...(userType === 'vendor' ? [{ value: 'campaigns', label: 'Campaigns', icon: <CampaignIcon /> }] : []),
-    { value: 'gallery', label: 'Photo Gallery', icon: <PhotoIcon /> },
+    ...(userType === 'vendor' ? [{ value: 'gallery', label: 'Photo Gallery', icon: <PhotoIcon /> }] : []),
     { value: 'reports', label: 'Reports', icon: <ReportsIcon /> },
     { value: 'analytics', label: 'Analytics', icon: <AnalyticsIcon /> },
   ];
@@ -1707,7 +2227,7 @@ const Dashboard = () => {
       <AppBar position="sticky" sx={{ zIndex: 1100 }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            FieldSaathi <span style={{ fontWeight: 300 }}>Lite</span>
+            {userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard'}
           </Typography>
           <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1 }}>
             {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
@@ -1735,7 +2255,10 @@ const Dashboard = () => {
       <Paper elevation={1} sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs
           value={activePage}
-          onChange={(e, newValue) => setActivePage(newValue)}
+          onChange={(e, newValue) => {
+            const path = newValue === 'dashboard' ? basePath : `${basePath}/${newValue}`;
+            navigate(path);
+          }}
           variant="scrollable"
           scrollButtons="auto"
           sx={{
@@ -1774,6 +2297,22 @@ const Dashboard = () => {
           {renderPage()}
         </Container>
       </Box>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={4000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

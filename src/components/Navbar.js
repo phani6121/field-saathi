@@ -89,7 +89,7 @@ const Navbar = () => {
   };
 
   // Don't show navbar on dashboard, signin, or signup pages
-  if (location.pathname === '/dashboard' || location.pathname === '/signin' || location.pathname === '/signup') {
+  if (location.pathname === '/dashboard' || location.pathname === '/vendor-dashboard' || location.pathname === '/client-dashboard' || location.pathname === '/signin' || location.pathname === '/signup') {
     return null;
   }
 
@@ -118,7 +118,10 @@ const Navbar = () => {
             <Button
               color="inherit"
               startIcon={<DashboardIcon />}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => {
+                const userType = localStorage.getItem('userType');
+                navigate(userType === 'client' ? '/client-dashboard' : '/vendor-dashboard');
+              }}
               sx={{ textTransform: 'none' }}
             >
               Dashboard

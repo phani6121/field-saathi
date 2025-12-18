@@ -54,7 +54,9 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/vendor-dashboard/*" element={<Dashboard />} />
+          <Route path="/client-dashboard/*" element={<Dashboard />} />
+          <Route path="/dashboard/*" element={<Dashboard />} />
         </Routes>
       </Router>
     </MuiThemeProvider>

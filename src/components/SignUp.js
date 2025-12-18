@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { IconButton } from '@mui/material';
 import { Brightness4 as DarkModeIcon, Brightness7 as LightModeIcon } from '@mui/icons-material';
@@ -8,6 +8,16 @@ import './SignUp.css';
 const SignUp = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const userType = localStorage.getItem('userType');
+    if (userType) {
+      // User is already logged in, redirect to their dashboard
+      const dashboardPath = userType === 'client' ? '/client-dashboard' : '/vendor-dashboard';
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [navigate]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
