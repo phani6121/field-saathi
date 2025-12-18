@@ -1,26 +1,22 @@
 .signin-page {
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile */
   background: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
   transition: background-color 0.3s;
-  box-sizing: border-box;
 }
 
 .signin-container {
   background: var(--bg-primary);
-  border-radius: 10px;
+  border-radius: 20px;
   box-shadow: var(--shadow-hover);
   max-width: 450px;
   width: 100%;
   padding: 3rem 2.5rem;
   border: 1px solid var(--border-color);
   transition: background-color 0.3s, border-color 0.3s;
-  box-sizing: border-box;
-  position: relative;
 }
 
 .signin-header {
@@ -41,6 +37,11 @@
   margin: 0;
 }
 
+.brand-lite {
+  color: var(--text-light);
+  font-weight: 400;
+}
+
 .signin-header h2 {
   font-size: 2rem;
   color: var(--text-dark);
@@ -51,7 +52,71 @@
 .signin-header p {
   color: var(--text-light);
   font-size: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.theme-toggle-container {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+  padding: 0.5rem 0;
+}
+
+.demo-section {
+  background: var(--bg-secondary);
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.demo-section h3 {
+  color: var(--primary-color);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+}
+
+.demo-subtitle {
+  color: var(--text-light);
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0 0 1rem 0;
+}
+
+.demo-options {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.demo-btn {
+  flex: 1;
+  padding: 12px 20px;
+  background: var(--bg-primary);
+  border: 2px solid var(--primary-color);
+  color: var(--primary-color);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.demo-btn:hover {
+  background: var(--primary-color);
+  color: var(--white);
+  transform: translateY(-2px);
+}
+
+.demo-btn.active {
+  background: var(--primary-color);
+  color: var(--white);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .quick-fill-buttons {
@@ -192,39 +257,13 @@
 }
 
 @media (max-width: 768px) {
-  .signin-page {
-    padding: 1rem;
-    align-items: flex-start;
-    padding-top: 2rem;
-  }
-
   .signin-container {
     padding: 2rem 1.5rem;
-    max-width: 100%;
-    border-radius: 8px;
+    border-radius: 20px;
   }
 
   .signin-header h2 {
     font-size: 1.5rem;
-  }
-
-  .logo-link h1 {
-    font-size: 1.5rem;
-  }
-
-  .signin-header p {
-    font-size: 0.9rem;
-  }
-
-  .quick-fill-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .btn-quick-fill {
-    width: 100%;
-    padding: 10px 16px;
-    font-size: 0.9rem;
   }
 
   .form-options {
@@ -233,23 +272,33 @@
     gap: 0.75rem;
   }
 
-  .signin-form input {
-    font-size: 16px; /* Prevents zoom on iOS */
-    padding: 14px 15px;
+  .demo-section {
+    padding: 1.25rem;
+    border-radius: 15px;
+  }
+
+  .demo-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .demo-options {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .demo-btn {
+    width: 100%;
   }
 }
 
 @media (max-width: 480px) {
   .signin-page {
-    padding: 0.5rem;
-    padding-top: 1rem;
+    padding: 1rem 0.5rem;
   }
 
   .signin-container {
     padding: 1.5rem 1rem;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
+    border-radius: 20px;
   }
 
   .signin-header h2 {
@@ -257,30 +306,28 @@
   }
 
   .logo-link h1 {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
   }
 
-  .signin-header p {
+  .demo-section {
+    padding: 1rem;
+    border-radius: 15px;
+  }
+
+  .demo-section h3 {
+    font-size: 1.1rem;
+  }
+
+  .demo-subtitle {
     font-size: 0.85rem;
   }
 
-  .signin-form input {
-    padding: 12px 15px;
-    font-size: 16px; /* Prevents zoom on iOS */
+  .quick-fill-buttons {
+    flex-direction: column;
   }
 
-  .btn-submit {
-    padding: 12px;
-    font-size: 1rem;
-  }
-
-  .signin-footer {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-  }
-
-  .signin-footer p {
-    font-size: 0.85rem;
+  .btn-quick-fill {
+    width: 100%;
   }
 }
 

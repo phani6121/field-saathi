@@ -153,35 +153,57 @@ const SignIn = () => {
   return (
     <div className="signin-page">
       <div className="signin-container">
-        <div style={{ 
-          position: 'absolute', 
-          top: '0.5rem', 
-          right: '0.5rem',
-          zIndex: 10
-        }}>
-          <IconButton 
-            onClick={toggleTheme} 
-            sx={{ 
-              color: 'var(--text-secondary)',
-              padding: '8px',
-              '&:hover': {
-                color: 'var(--primary-color)',
-              },
-              '@media (max-width: 480px)': {
-                padding: '6px',
-              }
-            }}
-            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-          >
-            {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
-          </IconButton>
-        </div>
         <div className="signin-header">
           <Link to="/" className="logo-link">
             <h1>FieldSaathi <span className="brand-lite">Lite</span></h1>
           </Link>
           <h2>Sign In to Your Account</h2>
           <p>Welcome back! Please sign in to continue.</p>
+          
+          {/* Theme Toggle Below Header */}
+          <div className="theme-toggle-container">
+            <IconButton 
+              onClick={toggleTheme} 
+              sx={{ 
+                color: 'var(--text-secondary)',
+                '&:hover': {
+                  color: 'var(--primary-color)',
+                }
+              }}
+              title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            >
+              {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+            </IconButton>
+          </div>
+
+          {/* Demo Section Below Header */}
+          <div className="demo-section">
+            <h3>Try Demo</h3>
+            <p className="demo-subtitle">Try the app without signing up</p>
+            <div className="demo-options">
+              <button
+                type="button"
+                className={`demo-btn ${formData.email === defaultCredentials.client.email ? 'active' : ''}`}
+                onClick={() => {
+                  handleQuickFill('client');
+                  handleAutoLogin('client');
+                }}
+              >
+                Client
+              </button>
+              <button
+                type="button"
+                className={`demo-btn ${formData.email === defaultCredentials.vendor.email ? 'active' : ''}`}
+                onClick={() => {
+                  handleQuickFill('vendor');
+                  handleAutoLogin('vendor');
+                }}
+              >
+                Event Vendor
+              </button>
+            </div>
+          </div>
+
           <div className="quick-fill-buttons">
             <button 
               type="button" 
