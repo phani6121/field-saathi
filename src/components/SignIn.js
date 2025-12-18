@@ -153,13 +153,22 @@ const SignIn = () => {
   return (
     <div className="signin-page">
       <div className="signin-container">
-        <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+        <div style={{ 
+          position: 'absolute', 
+          top: '0.5rem', 
+          right: '0.5rem',
+          zIndex: 10
+        }}>
           <IconButton 
             onClick={toggleTheme} 
             sx={{ 
               color: 'var(--text-secondary)',
+              padding: '8px',
               '&:hover': {
                 color: 'var(--primary-color)',
+              },
+              '@media (max-width: 480px)': {
+                padding: '6px',
               }
             }}
             title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
