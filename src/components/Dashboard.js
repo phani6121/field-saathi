@@ -47,6 +47,7 @@ import {
   Delete as DeleteIcon,
   ContentCopy as CopyIcon,
   ContentPaste as PasteIcon,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
 import './Dashboard.css';
 import CreateCampaign from './CreateCampaign';
@@ -77,6 +78,7 @@ const Dashboard = () => {
   const [searchError, setSearchError] = useState('');
   const [searchedCoordinate, setSearchedCoordinate] = useState(null);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   
   const userType = localStorage.getItem('userType') || 'client';
   const userEmail = localStorage.getItem('userEmail') || 'phanindra61214243@gmail.com';
@@ -2217,19 +2219,40 @@ const Dashboard = () => {
       )}
       
       {/* Header */}
-      <AppBar position="sticky" sx={{ zIndex: 1100 }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+      <AppBar position="sticky" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Toolbar sx={{ px: { xs: 1, sm: 2 } }}>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setMobileDrawerOpen(true)}
+            sx={{ mr: { xs: 1, sm: 2 }, display: { sm: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              flexGrow: 1, 
+              fontWeight: 600,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}
+          >
             {userType === 'client' ? 'Client' : 'Agency'}
           </Typography>
-          <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1 }}>
+          <IconButton 
+            onClick={toggleTheme} 
+            color="inherit" 
+            sx={{ mr: { xs: 0.5, sm: 1 } }}
+            size="small"
+          >
             {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
           </IconButton>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>
-            <Avatar sx={{ bgcolor: 'white', color: 'primary.main', width: 36, height: 36 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, mr: { xs: 1, sm: 2 } }}>
+            <Avatar sx={{ bgcolor: 'white', color: 'primary.main', width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 } }}>
               {userEmail.charAt(0).toUpperCase()}
             </Avatar>
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
               <Typography variant="body2" sx={{ fontSize: '0.9rem', lineHeight: 1.2 }}>
                 {userEmail}
               </Typography>
@@ -2238,18 +2261,132 @@ const Dashboard = () => {
               </Typography>
             </Box>
           </Box>
-          <Button color="inherit" onClick={handleLogout} startIcon={<LogoutIcon />} sx={{ textTransform: 'none' }}>
-            Logout
+          <Button 
+            color="inherit" 
+            onClick={handleLogout} 
+            startIcon={<LogoutIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />} 
+            sx={{ 
+              textTransform: 'none',
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1, sm: 2 },
+              minWidth: { xs: 'auto', sm: 'auto' },
+              '& .MuiButton-startIcon': {
+                marginRight: { xs: 0.5, sm: 1 }
+              }
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Logout</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Out</Box>
           </Button>
         </Toolbar>
       </AppBar>
 
       {/* Side Menu and Main Content */}
       <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Side Menu */}
+        {/* Mobile Drawer */}
+        <Drawer
+          variant="temporary"
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile.
+          }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: { xs: 260, sm: 280 },
+              maxWidth: '85vw',
+              borderRight: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+            },
+          }}
+        >
+          <Box sx={{ pt: 2.5, pb: 1.5, px: 2 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                color: 'text.primary',
+                px: 1.5,
+                mb: 0.5,
+                fontSize: { xs: '1rem', sm: '1.25rem' }
+              }}
+            >
+              Menu
+            </Typography>
+          </Box>
+          <List sx={{ px: 1.5, pt: 0.5 }}>
+            {navItems.map((item) => (
+              <ListItem key={item.value} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  selected={activePage === item.value}
+                  onClick={() => {
+                    const path = (item.value === 'dashboard-overview') ? basePath : `${basePath}/${item.value}`;
+                    navigate(path);
+                    setMobileDrawerOpen(false); // Close drawer on mobile after navigation
+                  }}
+                  sx={{
+                    py: { xs: 1.75, sm: 1.5 },
+                    px: { xs: 2, sm: 2.5 },
+                    borderRadius: 2,
+                    mb: 0.5,
+                    minHeight: 48, // Better touch target for mobile
+                    transition: 'all 0.2s ease-in-out',
+                    '&.Mui-selected': {
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                      '&:hover': {
+                        bgcolor: 'primary.dark',
+                        transform: 'translateX(4px)',
+                      },
+                      '&:active': {
+                        transform: 'scale(0.98)',
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: 'white',
+                      },
+                    },
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      transform: 'translateX(4px)',
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main',
+                      },
+                    },
+                    '&:active': {
+                      transform: 'scale(0.98)',
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: { xs: 40, sm: 44 },
+                      color: activePage === item.value ? 'white' : 'text.secondary',
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontWeight: activePage === item.value ? 600 : 500,
+                      fontSize: { xs: '0.9rem', sm: '0.95rem' },
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Drawer>
+
+        {/* Desktop Side Menu */}
         <Drawer
           variant="permanent"
           sx={{
+            display: { xs: 'none', sm: 'block' },
             width: 280,
             flexShrink: 0,
             '& .MuiDrawer-paper': {
@@ -2337,13 +2474,14 @@ const Dashboard = () => {
           component="main"
           sx={{
             flexGrow: 1,
-            p: 3,
+            p: { xs: 2, sm: 3 },
             backgroundColor: 'background.default',
             overflow: 'auto',
             minHeight: 'calc(100vh - 64px)',
+            width: { xs: '100%', sm: 'calc(100% - 280px)' },
           }}
         >
-          <Container maxWidth="xl">
+          <Container maxWidth="xl" sx={{ px: { xs: 0, sm: 3 } }}>
             {renderPage()}
           </Container>
         </Box>
