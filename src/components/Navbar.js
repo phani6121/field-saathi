@@ -76,10 +76,6 @@ const Navbar = () => {
     setIsMenuOpen(false);
   };
 
-  const handleSignIn = () => {
-    navigate('/signin');
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('userType');
     localStorage.removeItem('userEmail');
@@ -111,7 +107,7 @@ const Navbar = () => {
                   {userEmail}
                 </Typography>
                 <Typography variant="caption" sx={{ fontSize: '0.75rem', opacity: 0.9 }}>
-                  {userType === 'client' ? 'Client' : 'Vendor'}
+                  {userType === 'client' ? 'Client' : 'Agency'}
                 </Typography>
               </Box>
             </Box>
@@ -150,17 +146,12 @@ const Navbar = () => {
           </Link>
         </div>
         <ul className={`nav-menu ${isMenuOpen ? 'active' : ''}`}>
-          <li><a href="#home" onClick={(e) => handleSmoothScroll(e, '#home')}>Home</a></li>
-          <li><a href="#features" onClick={(e) => handleSmoothScroll(e, '#features')}>Features</a></li>
-          <li><a href="#pricing" onClick={(e) => handleSmoothScroll(e, '#pricing')}>Pricing</a></li>
-          <li><a href="#demo" onClick={(e) => handleSmoothScroll(e, '#demo')}>Demo</a></li>
         </ul>
         <div className="nav-actions">
           <IconButton 
             onClick={toggleTheme} 
             sx={{ 
               color: 'var(--text-secondary)',
-              mr: 1,
               '&:hover': {
                 color: 'var(--primary-color)',
               }
@@ -169,12 +160,6 @@ const Navbar = () => {
           >
             {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
           </IconButton>
-          <button className="btn btn-signin" onClick={handleSignIn}>Sign In</button>
-        </div>
-        <div className="hamburger" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          <span></span>
-          <span></span>
-          <span></span>
         </div>
       </div>
     </nav>

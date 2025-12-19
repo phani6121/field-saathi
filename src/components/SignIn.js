@@ -66,18 +66,9 @@ const SignIn = () => {
   // Auto-fill credentials based on URL parameter
   useEffect(() => {
     const role = searchParams.get('role');
-    const isDemo = searchParams.get('demo') === 'true';
     
     if (role && (role === 'client' || role === 'vendor')) {
       handleQuickFill(role);
-      
-      // If demo mode, auto-submit after a short delay
-      if (isDemo) {
-        const timer = setTimeout(() => {
-          handleAutoLogin(role);
-        }, 500);
-        return () => clearTimeout(timer);
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -154,14 +145,10 @@ const SignIn = () => {
     <div className="signin-page">
       <div className="signin-container">
         <div className="signin-header">
-          <Link to="/" className="logo-link">
-            <h1>FieldSaathi <span className="brand-lite">Lite</span></h1>
-          </Link>
-          <h2>Sign In to Your Account</h2>
-          <p>Welcome back! Please sign in to continue.</p>
-          
-          {/* Theme Toggle Below Header */}
-          <div className="theme-toggle-container">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '2rem' }}>
+            <Link to="/" className="logo-link" style={{ textDecoration: 'none' }}>
+              <h1 style={{ margin: 0 }}>FieldSaathi <span className="brand-lite">Lite</span></h1>
+            </Link>
             <IconButton 
               onClick={toggleTheme} 
               sx={{ 
@@ -176,50 +163,17 @@ const SignIn = () => {
             </IconButton>
           </div>
 
-          {/* Demo Section Below Header */}
-          <div className="demo-section">
-            <h3>Try Demo</h3>
-            <p className="demo-subtitle">Try the app without signing up</p>
-            <div className="demo-options">
-              <button
-                type="button"
-                className={`demo-btn ${formData.email === defaultCredentials.client.email ? 'active' : ''}`}
-                onClick={() => {
-                  handleQuickFill('client');
-                  handleAutoLogin('client');
-                }}
-              >
-                Client
-              </button>
-              <button
-                type="button"
-                className={`demo-btn ${formData.email === defaultCredentials.vendor.email ? 'active' : ''}`}
-                onClick={() => {
-                  handleQuickFill('vendor');
-                  handleAutoLogin('vendor');
-                }}
-              >
-                Event Vendor
-              </button>
-            </div>
-          </div>
+          {/* Role-specific title */}
+          {(() => {
+            const role = searchParams.get('role');
+            if (role === 'client') {
+              return <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Client Sign In</h2>;
+            } else if (role === 'vendor') {
+              return <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Agency Sign In</h2>;
+            }
+            return null;
+          })()}
 
-          <div className="quick-fill-buttons">
-            <button 
-              type="button" 
-              className="btn-quick-fill" 
-              onClick={() => handleQuickFill('client')}
-            >
-              Use Client Account
-            </button>
-            <button 
-              type="button" 
-              className="btn-quick-fill" 
-              onClick={() => handleQuickFill('vendor')}
-            >
-              Use Vendor Account
-            </button>
-          </div>
         </div>
 
         <form className="signin-form" onSubmit={handleSubmit}>

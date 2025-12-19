@@ -183,12 +183,12 @@ const CreateCampaign = ({ onClose, onCreate, userType, editingCampaign }) => {
 
           {userType === 'client' && (
             <TextField
-              label="Assign to Vendor"
+              label="Assign to Agency"
               name="assignedTo"
               value={formData.assignedTo}
               onChange={handleChange}
               placeholder="e.g., vendor@fieldsaathi.com"
-              helperText="Enter vendor email to assign this campaign"
+              helperText="Enter agency email to assign this campaign"
               fullWidth
             />
           )}

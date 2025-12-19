@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { IconButton } from '@mui/material';
+import { IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from '@mui/material';
 import { Brightness4 as DarkModeIcon, Brightness7 as LightModeIcon } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import './SignUp.css';
@@ -8,6 +8,7 @@ import './SignUp.css';
 const SignUp = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const [signInDialogOpen, setSignInDialogOpen] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -190,7 +191,7 @@ const SignUp = () => {
               onChange={handleChange}
             >
               <option value="client">Client</option>
-              <option value="vendor">Event Vendor</option>
+              <option value="vendor">Agency</option>
             </select>
           </div>
 
@@ -232,9 +233,51 @@ const SignUp = () => {
         </form>
 
         <div className="signup-footer">
-          <p>Already have an account? <Link to="/signin">Sign In</Link></p>
+          <p>Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setSignInDialogOpen(true); }} style={{ color: 'var(--primary-color)', textDecoration: 'none', cursor: 'pointer' }}>Sign In</a></p>
         </div>
       </div>
+
+      {/* Sign In Dialog */}
+      <Dialog
+        open={signInDialogOpen}
+        onClose={() => setSignInDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Choose Account Type</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Select an account type to sign in:
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => {
+                setSignInDialogOpen(false);
+                navigate('/signin?role=client');
+              }}
+              sx={{ minWidth: 150 }}
+            >
+              Client
+            </Button>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => {
+                setSignInDialogOpen(false);
+                navigate('/signin?role=vendor');
+              }}
+              sx={{ minWidth: 150 }}
+            >
+              Agency
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSignInDialogOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

@@ -24,13 +24,13 @@ import {
   DialogActions,
   Paper,
   Stack,
-  Tabs,
-  Tab,
   Container,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  ListItemButton,
+  Drawer,
   Snackbar,
   Alert,
 } from '@mui/material';
@@ -89,7 +89,7 @@ const Dashboard = () => {
     if (pathname.includes('/gallery')) return 'gallery';
     if (pathname.includes('/reports')) return 'reports';
     if (pathname.includes('/analytics')) return 'analytics';
-    return 'dashboard';
+    return 'dashboard-overview';
   };
 
   // Get campaign ID from URL if on campaign-details page
@@ -186,7 +186,7 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('userType');
     localStorage.removeItem('userEmail');
-    navigate('/signin');
+    navigate('/');
   };
 
   // Calculate total photos from all campaigns
@@ -863,13 +863,6 @@ const Dashboard = () => {
 
   const renderDashboard = () => (
     <Box>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
-        {userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard'}
-      </Typography>
-      <Typography variant="body1" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-        Overview of your BTL campaign activities
-      </Typography>
-
       <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
         <Card 
           sx={{ 
@@ -986,7 +979,7 @@ const Dashboard = () => {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'dashboard':
+      case 'dashboard-overview':
         return renderDashboard();
       case 'campaigns':
         // Clients can view campaigns
@@ -1094,7 +1087,7 @@ const Dashboard = () => {
                           )}
                           {!campaign.submitted && (
                             <Chip 
-                              label="⏳ Waiting for vendor submission" 
+                              label="⏳ Waiting for agency submission" 
                               size="small" 
                               sx={{ mt: 1, bgcolor: '#fff3e0', color: '#f57c00' }}
                             />
@@ -1453,7 +1446,7 @@ const Dashboard = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     {userType === 'vendor' 
                       ? 'Start taking photos in your campaigns to see them here' 
-                      : 'No photos have been submitted yet. Photos from vendors will appear here.'}
+                      : 'No photos have been submitted yet. Photos from agencies will appear here.'}
                   </Typography>
                   {userType === 'vendor' && (
                     <Button variant="contained" onClick={() => navigate(`${basePath}/campaigns`)}>
@@ -1927,7 +1920,7 @@ const Dashboard = () => {
                     No activities submitted yet
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    The vendor has not submitted any photos or activities for this campaign.
+                    The agency has not submitted any photos or activities for this campaign.
                   </Typography>
                 </CardContent>
               </Card>
@@ -2201,7 +2194,7 @@ const Dashboard = () => {
 
   // Navigation items based on user type
   const navItems = [
-    { value: 'dashboard', label: userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard', icon: <DashboardIcon /> },
+    { value: 'dashboard-overview', label: 'Dashboard', icon: <DashboardIcon /> },
     ...(userType === 'client' ? [{ value: 'campaigns', label: 'Campaigns', icon: <CampaignIcon /> }] : []),
     ...(userType === 'vendor' ? [{ value: 'campaigns', label: 'Campaigns', icon: <CampaignIcon /> }] : []),
     ...(userType === 'vendor' ? [{ value: 'gallery', label: 'Photo Gallery', icon: <PhotoIcon /> }] : []),
@@ -2227,7 +2220,7 @@ const Dashboard = () => {
       <AppBar position="sticky" sx={{ zIndex: 1100 }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            {userType === 'client' ? 'Client Dashboard' : 'Vendor Dashboard'}
+            {userType === 'client' ? 'Client' : 'Agency'}
           </Typography>
           <IconButton onClick={toggleTheme} color="inherit" sx={{ mr: 1 }}>
             {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
@@ -2241,7 +2234,7 @@ const Dashboard = () => {
                 {userEmail}
               </Typography>
               <Typography variant="caption" sx={{ fontSize: '0.75rem', opacity: 0.9 }}>
-                {userType === 'client' ? 'Client' : 'Vendor'}
+                {userType === 'client' ? 'Client' : 'Agency'}
               </Typography>
             </Box>
           </Box>
@@ -2251,51 +2244,109 @@ const Dashboard = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Navigation Tabs */}
-      <Paper elevation={1} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs
-          value={activePage}
-          onChange={(e, newValue) => {
-            const path = newValue === 'dashboard' ? basePath : `${basePath}/${newValue}`;
-            navigate(path);
-          }}
-          variant="scrollable"
-          scrollButtons="auto"
+      {/* Side Menu and Main Content */}
+      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Side Menu */}
+        <Drawer
+          variant="permanent"
           sx={{
-            borderBottom: 1,
-            borderColor: 'divider',
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              minHeight: 64,
-              fontWeight: 500,
+            width: 280,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: 280,
+              boxSizing: 'border-box',
+              borderRight: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+              boxShadow: '2px 0 8px rgba(0,0,0,0.05)',
             },
           }}
         >
-          {navItems.map((item) => (
-            <Tab
-              key={item.value}
-              value={item.value}
-              label={item.label}
-              icon={item.icon}
-              iconPosition="start"
-            />
-          ))}
-        </Tabs>
-      </Paper>
+          <Box sx={{ pt: 3, pb: 2, px: 2 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                color: 'text.primary',
+                px: 2,
+                mb: 1
+              }}
+            >
+              Menu
+            </Typography>
+          </Box>
+          <List sx={{ px: 2, pt: 1 }}>
+            {navItems.map((item) => (
+              <ListItem key={item.value} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  selected={activePage === item.value}
+                  onClick={() => {
+                    const path = (item.value === 'dashboard-overview') ? basePath : `${basePath}/${item.value}`;
+                    navigate(path);
+                  }}
+                  sx={{
+                    py: 1.5,
+                    px: 2.5,
+                    borderRadius: 2,
+                    mb: 0.5,
+                    transition: 'all 0.2s ease-in-out',
+                    '&.Mui-selected': {
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                      '&:hover': {
+                        bgcolor: 'primary.dark',
+                        transform: 'translateX(4px)',
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: 'white',
+                      },
+                    },
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      transform: 'translateX(4px)',
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 44,
+                      color: activePage === item.value ? 'white' : 'text.secondary',
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.label}
+                    primaryTypographyProps={{
+                      fontWeight: activePage === item.value ? 600 : 500,
+                      fontSize: '0.95rem',
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Drawer>
 
-      {/* Main Content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          backgroundColor: 'background.default',
-          minHeight: 'calc(100vh - 128px)',
-        }}
-      >
-        <Container maxWidth="xl">
-          {renderPage()}
-        </Container>
+        {/* Main Content */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            backgroundColor: 'background.default',
+            overflow: 'auto',
+            minHeight: 'calc(100vh - 64px)',
+          }}
+        >
+          <Container maxWidth="xl">
+            {renderPage()}
+          </Container>
+        </Box>
       </Box>
 
       {/* Notification Snackbar */}
