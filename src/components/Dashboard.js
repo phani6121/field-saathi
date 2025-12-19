@@ -2267,7 +2267,7 @@ const Dashboard = () => {
             startIcon={<LogoutIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />} 
             sx={{ 
               textTransform: 'none',
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
               px: { xs: 1, sm: 2 },
               minWidth: { xs: 'auto', sm: 'auto' },
               '& .MuiButton-startIcon': {
@@ -2275,8 +2275,7 @@ const Dashboard = () => {
               }
             }}
           >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Logout</Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Out</Box>
+            Logout
           </Button>
         </Toolbar>
       </AppBar>

@@ -89,51 +89,10 @@ const Navbar = () => {
     return null;
   }
 
-  // If user is logged in, show dashboard header
+  // If user is logged in on home page, redirect to dashboard instead of showing header
   if (userType && location.pathname === '/') {
-    return (
-      <AppBar position="sticky" sx={{ bgcolor: 'primary.main' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            FieldSaathi <span style={{ fontWeight: 300 }}>Lite</span>
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ bgcolor: 'white', color: 'primary.main', width: 32, height: 32 }}>
-                {userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
-              </Avatar>
-              <Box>
-                <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.2 }}>
-                  {userEmail}
-                </Typography>
-                <Typography variant="caption" sx={{ fontSize: '0.75rem', opacity: 0.9 }}>
-                  {userType === 'client' ? 'Client' : 'Agency'}
-                </Typography>
-              </Box>
-            </Box>
-            <Button
-              color="inherit"
-              startIcon={<DashboardIcon />}
-              onClick={() => {
-                const userType = localStorage.getItem('userType');
-                navigate(userType === 'client' ? '/client-dashboard' : '/vendor-dashboard');
-              }}
-              sx={{ textTransform: 'none' }}
-            >
-              Dashboard
-            </Button>
-            <Button
-              color="inherit"
-              startIcon={<LogoutIcon />}
-              onClick={handleLogout}
-              sx={{ textTransform: 'none' }}
-            >
-              Logout
-            </Button>
-          </Box>
-        </Toolbar>
-      </AppBar>
-    );
+    // Don't show dashboard header on home page - just show regular navbar
+    // User should be redirected to dashboard if logged in, but if they're here, show simple navbar
   }
 
   // Regular navbar for non-logged in users

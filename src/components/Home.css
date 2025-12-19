@@ -5,12 +5,16 @@
   justify-content: center;
   background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   padding: 2rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .home-content {
   text-align: center;
   max-width: 800px;
   width: 100%;
+  padding: 0 1rem;
+  box-sizing: border-box;
 }
 
 .home-title {
@@ -19,6 +23,9 @@
   color: var(--text-primary);
   margin-bottom: 1rem;
   line-height: 1.2;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .home-title .brand-lite {
@@ -75,13 +82,25 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .home-container {
+    padding: 1.5rem 1rem;
+    min-height: calc(100vh - 70px);
+  }
+
+  .home-content {
+    padding: 0 0.5rem;
+  }
+
   .home-title {
     font-size: 2.5rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 
   .home-subtitle {
     font-size: 1.2rem;
     margin-bottom: 2rem;
+    word-break: break-word;
   }
 
   .home-btn {
@@ -97,17 +116,42 @@
 }
 
 @media (max-width: 480px) {
+  .home-container {
+    padding: 1rem 0.75rem;
+    min-height: calc(100vh - 60px);
+  }
+
+  .home-content {
+    padding: 0 0.25rem;
+  }
+
   .home-title {
     font-size: 2rem;
+    line-height: 1.1;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    margin-bottom: 0.75rem;
   }
 
   .home-subtitle {
     font-size: 1rem;
+    word-break: break-word;
+    padding: 0 0.5rem;
   }
 
   .home-btn {
     width: 100%;
     max-width: 280px;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-title {
+    font-size: 1.75rem;
+  }
+
+  .home-subtitle {
+    font-size: 0.9rem;
   }
 }
 

@@ -75,12 +75,22 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .nav-brand h1 {
     color: var(--primary-color);
     font-size: 1.5rem;
     font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .brand-lite {
@@ -582,6 +592,19 @@ body {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .navbar {
+        padding: 0.75rem 0;
+    }
+
+    .navbar .container {
+        padding: 0 0.75rem;
+    }
+
+    .nav-brand h1 {
+        font-size: 1.25rem;
+        max-width: 200px;
+    }
+
     .nav-menu {
         position: fixed;
         left: -100%;
@@ -654,6 +677,23 @@ body {
 }
 
 @media (max-width: 480px) {
+    .navbar {
+        padding: 0.5rem 0;
+    }
+
+    .navbar .container {
+        padding: 0 0.5rem;
+    }
+
+    .nav-brand h1 {
+        font-size: 1.1rem;
+        max-width: 150px;
+    }
+
+    .nav-actions {
+        gap: 0.25rem;
+    }
+
     .hero {
         padding: 40px 0;
         min-height: auto;
